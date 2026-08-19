@@ -37,6 +37,9 @@
   
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- html2canvas CDN (Para gerar a imagem) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     body {
@@ -97,7 +100,7 @@
           <i data-lucide="sheet" class="w-4 h-4 text-emerald-400"></i>
           <span class="hidden sm:inline">Google Sheet</span>
         </button>
-        <button onclick="switchTab('tabLancar')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-1.5">
+        <button onclick="openNewExpenseForm()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-1.5">
           <i data-lucide="plus" class="w-4 h-4"></i>
           <span class="hidden sm:inline">Lançar Despesa</span>
           <span class="sm:hidden">Lançar</span>
@@ -106,12 +109,12 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-28 md:pb-8 space-y-6">
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-40 md:pb-28 space-y-6">
 
     <!-- TAB 1: DASHBOARD -->
     <section id="tabDashboard" class="tab-content space-y-6">
       
-      <!-- Filters Row -->
+      <!-- Filters Row Dashboard -->
       <div class="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div class="flex items-center gap-2">
           <i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i>
@@ -182,6 +185,22 @@
         </div>
       </div>
 
+      <!-- NOVA TABELA: Gastos por Categoria -->
+      <div class="glass-card p-5 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i> Gastos por Categoria
+          </h3>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <tbody id="dashCategoryTable" class="divide-y divide-slate-800/60 text-slate-200">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- AI Insights Section -->
       <div class="glass-card p-5 rounded-2xl border-emerald-500/20 relative overflow-hidden bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-emerald-950/20">
         <div class="flex items-center justify-between mb-3">
@@ -231,13 +250,16 @@
               <i data-lucide="plus-circle" class="w-6 h-6"></i>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-white">Lançar Nova Despesa</h2>
+              <h2 class="text-lg font-bold text-white">Lançar / Editar Despesa</h2>
               <p class="text-xs text-slate-400">Cálculo automático de fatura e parcelamento</p>
             </div>
           </div>
         </div>
 
         <form id="formDespesa" onsubmit="handleSaveExpense(event)" class="space-y-4">
+          <!-- Hidden Input para armazenar ID ao editar -->
+          <input type="hidden" id="editExpenseId" value="">
+
           <!-- Estabelecimento & Valor -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -305,7 +327,7 @@
           </div>
 
           <div class="pt-2">
-            <button type="submit" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2">
+            <button type="submit" id="btnSaveExpense" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2">
               <i data-lucide="check-circle" class="w-5 h-5"></i>
               <span>Salvar Despesa na Sheet</span>
             </button>
@@ -324,42 +346,57 @@
           </h2>
           <p class="text-xs text-slate-400">Consolidado e acerto individual de contas</p>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <select id="extratoFilterResponsavel" onchange="renderExtrato()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:flex sm:items-center">
+          <select id="extratoFilterResponsavel" onchange="renderExtrato()" class="w-full sm:w-auto bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
             <!-- Options -->
           </select>
-          <input type="month" id="extratoFilterMesAno" onchange="renderExtrato()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          <select id="extratoFilterCartao" onchange="renderExtrato()" class="w-full sm:w-auto bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <option value="ALL">Todos Cartões/Formas</option>
+            <option value="OTHER">Fora do Cartão (Pix/Dinheiro)</option>
+            <!-- Card options dynamically added -->
+          </select>
+          <input type="month" id="extratoFilterMesAno" onchange="renderExtrato()" class="w-full sm:w-auto bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
         </div>
       </div>
 
-      <!-- Summary Cards per Responsible -->
-      <div id="extratoCardsSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <!-- Table / Detailed List -->
-      <div class="glass-card rounded-2xl overflow-hidden">
-        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Despesas Detalhadas no Período</h3>
-          <span id="extratoItemCount" class="text-xs text-slate-400">0 itens</span>
+      <!-- Wrapper para a área que será exportada como imagem -->
+      <div id="extratoExportArea" class="space-y-6">
+        
+        <!-- Summary Cards per Responsible -->
+        <div id="extratoCardsSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Rendered dynamically -->
         </div>
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800">
-              <tr>
-                <th class="p-3">Estabelecimento</th>
-                <th class="p-3">Categoria</th>
-                <th class="p-3">Forma / Cartão</th>
-                <th class="p-3">Responsável</th>
-                <th class="p-3">Parcela</th>
-                <th class="p-3 text-right">Valor</th>
-                <th class="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="extratoTableBody" class="divide-y divide-slate-800/60 text-slate-200">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
+
+        <!-- Table / Detailed List -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between gap-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Despesas Detalhadas no Período</h3>
+            <div class="flex items-center gap-3">
+              <span id="extratoItemCount" class="text-xs text-slate-400">0 itens</span>
+              <button onclick="downloadExtratoImage()" title="Salvar Imagem do Extrato" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 transition-all text-xs font-semibold border border-emerald-500/20">
+                <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Gerar Imagem</span>
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar bg-slate-950">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="p-3">Estabelecimento</th>
+                  <th class="p-3">Categoria</th>
+                  <th class="p-3">Forma / Cartão</th>
+                  <th class="p-3">Responsável</th>
+                  <th class="p-3">Parcela</th>
+                  <th class="p-3 text-right">Valor</th>
+                  <th class="p-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="extratoTableBody" class="divide-y divide-slate-800/60 text-slate-200">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -368,10 +405,10 @@
     <section id="tabCadastros" class="tab-content hidden space-y-6">
       
       <!-- Sub Navigation -->
-      <div class="flex border-b border-slate-800 space-x-6 text-sm">
-        <button onclick="switchCadastroSubTab('cadCartoes')" id="btnCadCartoes" class="pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400">Cartões de Crédito</button>
-        <button onclick="switchCadastroSubTab('cadResponsaveis')" id="btnCadResponsaveis" class="pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Responsáveis</button>
-        <button onclick="switchCadastroSubTab('cadCategorias')" id="btnCadCategorias" class="pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Categorias</button>
+      <div class="flex border-b border-slate-800 space-x-6 text-sm overflow-x-auto custom-scrollbar">
+        <button onclick="switchCadastroSubTab('cadCartoes')" id="btnCadCartoes" class="pb-3 whitespace-nowrap border-b-2 border-emerald-500 font-semibold text-emerald-400">Cartões de Crédito</button>
+        <button onclick="switchCadastroSubTab('cadResponsaveis')" id="btnCadResponsaveis" class="pb-3 whitespace-nowrap border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Responsáveis</button>
+        <button onclick="switchCadastroSubTab('cadCategorias')" id="btnCadCategorias" class="pb-3 whitespace-nowrap border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Categorias</button>
       </div>
 
       <!-- Subtab 1: Cartões -->
@@ -393,18 +430,15 @@
               <input type="number" min="1" max="31" id="cadCartaoVencimento" required placeholder="Ex: 11" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
             </div>
             <div class="sm:col-span-4 flex justify-end gap-2 pt-2">
-              <button type="button" onclick="resetCartaoForm()" class="px-3 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Cancelar</button>
+              <button type="button" onclick="resetCartaoForm()" class="px-3 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl hover:bg-slate-700">Cancelar</button>
               <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl">Salvar Cartão</button>
             </div>
           </form>
         </div>
 
-        <!-- List Cartões -->
         <div class="glass-card rounded-2xl p-4">
           <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Cartões Cadastrados</h4>
-          <div id="listCartoes" class="space-y-2">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="listCartoes" class="space-y-2"></div>
         </div>
       </div>
 
@@ -421,9 +455,7 @@
 
         <div class="glass-card rounded-2xl p-4">
           <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Responsáveis Cadastrados</h4>
-          <div id="listResponsaveis" class="space-y-2">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="listResponsaveis" class="space-y-2"></div>
         </div>
       </div>
 
@@ -440,9 +472,7 @@
 
         <div class="glass-card rounded-2xl p-4">
           <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Categorias Cadastradas</h4>
-          <div id="listCategorias" class="space-y-2">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="listCategorias" class="space-y-2"></div>
         </div>
       </div>
 
@@ -450,13 +480,14 @@
 
   </main>
 
+  <!-- Mobile Floating Nav bar -->
   <nav class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-2 md:hidden">
     <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
       <button onclick="switchTab('tabDashboard')" id="navTabDashboard" class="flex flex-col items-center py-1.5 px-2 text-emerald-400 font-medium">
         <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
         <span class="text-[10px] mt-1">Dash</span>
       </button>
-      <button onclick="switchTab('tabLancar')" id="navTabLancar" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+      <button onclick="openNewExpenseForm()" id="navTabLancar" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
         <i data-lucide="plus-square" class="w-5 h-5"></i>
         <span class="text-[10px] mt-1">Lançar</span>
       </button>
@@ -476,7 +507,7 @@
     <button onclick="switchTab('tabDashboard')" id="deskNavTabDashboard" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white flex items-center gap-2">
       <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
     </button>
-    <button onclick="switchTab('tabLancar')" id="deskNavTabLancar" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+    <button onclick="openNewExpenseForm()" id="deskNavTabLancar" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
       <i data-lucide="plus-circle" class="w-4 h-4"></i> Lançar Despesa
     </button>
     <button onclick="switchTab('tabExtrato')" id="deskNavTabExtrato" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
@@ -501,105 +532,17 @@
       </div>
 
       <div class="space-y-3 text-xs text-slate-300">
-        <p>
-          Este aplicativo utiliza o <strong>Google Sheets</strong> como banco de dados principal. Para conectar a sua planilha existente:
-        </p>
+        <p>Este aplicativo utiliza o <strong>Google Sheets</strong> como banco de dados principal. Para conectar a sua planilha existente:</p>
         <ol class="list-decimal list-inside space-y-1.5 text-slate-400 pl-1">
           <li>Abra sua planilha no Google Drive.</li>
           <li>Acesse <strong>Extensões > Apps Script</strong>.</li>
-          <li>Cole o código Apps Script fornecido abaixo e clique em <strong>Implantar > Nova Implantação (Web App)</strong>.</li>
-          <li>Escolha permissão: <em>"Qualquer pessoa" (Anyone)</em>.</li>
+          <li>Cole o código Apps Script fornecido e clique em <strong>Implantar > Nova Implantação</strong>.</li>
           <li>Copie o URL da Web App gerado e cole no campo abaixo.</li>
         </ol>
 
         <div>
-          <label class="block font-semibold text-slate-200 mb-1">URL do Apps Script (Web App Endpoint)</label>
+          <label class="block font-semibold text-slate-200 mb-1">URL do Apps Script</label>
           <input type="url" id="inpWebAppUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
-        </div>
-
-        <div class="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-200 text-[11px]">Código Apps Script para a Planilha:</span>
-            <button onclick="copyAppsScriptCode()" class="text-emerald-400 hover:text-emerald-300 text-[11px] font-semibold flex items-center gap-1">
-              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar Código
-            </button>
-          </div>
-          <pre id="codeAppsScript" class="text-[10px] text-emerald-300/90 bg-slate-950 p-2.5 rounded-lg overflow-x-auto max-h-36 custom-scrollbar font-mono">
-function doGet(e) {
-  return handleRequest(e);
-}
-function doPost(e) {
-  return handleRequest(e);
-}
-function handleRequest(e) {
-  var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var param = e.parameter.action || (e.postData ? JSON.parse(e.postData.contents).action : '');
-    
-    if (param === 'readAll') {
-      var data = {
-        cards: getSheetData(ss, 'Cartões'),
-        responsibles: getSheetData(ss, 'Responsáveis'),
-        categories: getSheetData(ss, 'Categorias'),
-        expenses: getSheetData(ss, 'Despesas'),
-        installments: getSheetData(ss, 'Parcelas')
-      };
-      return responseJSON(data);
-    }
-    
-    if (e.postData) {
-      var payload = JSON.parse(e.postData.contents);
-      if (payload.action === 'syncAll') {
-        saveSheetData(ss, 'Cartões', payload.cards);
-        saveSheetData(ss, 'Responsáveis', payload.responsibles);
-        saveSheetData(ss, 'Categorias', payload.categories);
-        saveSheetData(ss, 'Despesas', payload.expenses);
-        saveSheetData(ss, 'Parcelas', payload.installments);
-        return responseJSON({ status: 'success' });
-      }
-    }
-    return responseJSON({ status: 'ok' });
-  } catch(err) {
-    return responseJSON({ error: err.toString() });
-  } finally {
-    lock.releaseLock();
-  }
-}
-function getSheetData(ss, sheetName) {
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return [];
-  var values = sheet.getDataRange().getValues();
-  if (values.length <= 1) return [];
-  var headers = values[0];
-  var result = [];
-  for (var i = 1; i < values.length; i++) {
-    var row = {};
-    for (var j = 0; j < headers.length; j++) {
-      row[headers[j]] = values[i][j];
-    }
-    result.push(row);
-  }
-  return result;
-}
-function saveSheetData(ss, sheetName, dataArray) {
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) sheet = ss.insertSheet(sheetName);
-  sheet.clearContents();
-  if (!dataArray || dataArray.length === 0) return;
-  var headers = Object.keys(dataArray[0]);
-  sheet.appendRow(headers);
-  var rows = dataArray.map(function(item) {
-    return headers.map(function(h) { return item[h] !== undefined ? item[h] : ''; });
-  });
-  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
-}
-function responseJSON(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-          </pre>
         </div>
       </div>
 
@@ -623,10 +566,7 @@ function responseJSON(obj) {
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
-
-      <div id="modalDetailsList" class="space-y-2">
-        <!-- Rendered dynamically -->
-      </div>
+      <div id="modalDetailsList" class="space-y-2"></div>
     </div>
   </div>
 
@@ -684,7 +624,6 @@ function responseJSON(obj) {
       installments: []
     };
 
-    // Initialize Application
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setDefaultMonthPicker();
@@ -696,7 +635,6 @@ function responseJSON(obj) {
         updateSyncBadge('OFFLINE (Local)');
       }
 
-      // Seed initial sample data if completely empty
       if (appState.expenses.length === 0) {
         seedSampleData();
       }
@@ -706,18 +644,11 @@ function responseJSON(obj) {
       renderAllViews();
     });
 
-    /**
-     * REGRA DO CARTÃO (Card Closing Date Logic):
-     * Given purchase date and card's closing day (dia_fechamento):
-     * If purchase day <= closing day -> statement month is the current month of purchase date.
-     * If purchase day > closing day -> statement month is the NEXT month.
-     * For OTHER payment method -> statement month is simple month/year of purchase date.
-     */
     function calculateCompetency(dateStr, paymentMethod, cardId) {
       if (!dateStr) return { year: new Date().getFullYear(), month: new Date().getMonth() };
       const dateParts = dateStr.split('-');
       let year = parseInt(dateParts[0], 10);
-      let month = parseInt(dateParts[1], 10) - 1; // 0-indexed JavaScript month
+      let month = parseInt(dateParts[1], 10) - 1; 
       const day = parseInt(dateParts[2], 10);
 
       if (paymentMethod === 'CARD' && cardId) {
@@ -725,7 +656,6 @@ function responseJSON(obj) {
         if (card) {
           const closingDay = parseInt(card.dia_fechamento, 10);
           if (day > closingDay) {
-            // Falls into next month's invoice
             month += 1;
             if (month > 11) {
               month = 0;
@@ -734,13 +664,7 @@ function responseJSON(obj) {
           }
         }
       }
-
-      return { year, month }; // Returns target competency year and 0-indexed month
-    }
-
-    function formatCompetencyKey(year, monthZeroIdx) {
-      const mStr = String(monthZeroIdx + 1).padStart(2, '0');
-      return `${year}-${mStr}`;
+      return { year, month }; 
     }
 
     function getMonthLabel(year, monthZeroIdx) {
@@ -783,8 +707,6 @@ function responseJSON(obj) {
       if (!url) return '';
       let cleanUrl = url.trim();
       if (!cleanUrl) return '';
-
-      // If user pasted just the Script Deployment ID (e.g., AKfycbz...)
       if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
         if (cleanUrl.includes('script.google.com')) {
           cleanUrl = 'https://' + cleanUrl;
@@ -833,21 +755,8 @@ function responseJSON(obj) {
 
     async function fetchFromGoogleSheets() {
       if (!appState.webAppUrl) return;
-
       const normalizedUrl = normalizeWebAppUrl(appState.webAppUrl);
-      if (!normalizedUrl) {
-        updateSyncBadge('URL Inválida');
-        return;
-      }
-
-      try {
-        new URL(normalizedUrl);
-      } catch (e) {
-        console.error('URL parse error:', normalizedUrl, e);
-        updateSyncBadge('URL Inválida');
-        showToast('A URL inserida é inválida. Cole a URL completa do Apps Script.', 'error');
-        return;
-      }
+      if (!normalizedUrl) return;
 
       updateSyncBadge('Carregando...');
       try {
@@ -870,7 +779,6 @@ function responseJSON(obj) {
           updateSyncBadge('Erro no Endpoint');
         }
       } catch (e) {
-        console.error("Error reading Google Sheets:", e);
         updateSyncBadge('Offline / Falha na Rede');
       }
     }
@@ -879,15 +787,10 @@ function responseJSON(obj) {
       const dot = document.getElementById('syncStatusDot');
       const txt = document.getElementById('syncStatusText');
       if (txt) txt.innerText = statusText;
-
       if (dot) {
-        if (statusText.includes('Conectado')) {
-          dot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block';
-        } else if (statusText.includes('Carregando') || statusText.includes('Sincronizando')) {
-          dot.className = 'w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping';
-        } else {
-          dot.className = 'w-2 h-2 rounded-full bg-rose-500 inline-block';
-        }
+        if (statusText.includes('Conectado')) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block';
+        else if (statusText.includes('Carregando') || statusText.includes('Sincronizando')) dot.className = 'w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping';
+        else dot.className = 'w-2 h-2 rounded-full bg-rose-500 inline-block';
       }
     }
 
@@ -896,43 +799,20 @@ function responseJSON(obj) {
       const todayStr = today.toISOString().split('T')[0];
 
       addExpenseRecord({
-        estabelecimento: 'Supermercado Central',
-        categoria: 'cat1',
-        responsável: 'r1',
-        forma_pagamento: 'CARD',
-        cartão: 'c1',
-        valor_total: 450.00,
-        parcelas: 3,
-        data_compra: todayStr
+        estabelecimento: 'Supermercado Central', categoria: 'cat1', responsável: 'r1',
+        forma_pagamento: 'CARD', cartão: 'c1', valor_total: 450.00, parcelas: 3, data_compra: todayStr
       }, false);
 
       addExpenseRecord({
-        estabelecimento: 'Drogaria São Paulo',
-        categoria: 'cat2',
-        responsável: 'r2',
-        forma_pagamento: 'CARD',
-        cartão: 'c2',
-        valor_total: 120.00,
-        parcelas: 1,
-        data_compra: todayStr
-      }, false);
-
-      addExpenseRecord({
-        estabelecimento: 'Padaria da Esquina',
-        categoria: 'cat1',
-        responsável: 'r1',
-        forma_pagamento: 'OTHER',
-        cartão: '',
-        valor_total: 45.50,
-        parcelas: 1,
-        data_compra: todayStr
+        estabelecimento: 'Drogaria São Paulo', categoria: 'cat2', responsável: 'r2',
+        forma_pagamento: 'CARD', cartão: 'c2', valor_total: 120.00, parcelas: 1, data_compra: todayStr
       }, false);
 
       saveLocalData();
     }
 
-    function addExpenseRecord(data, shouldSync = true) {
-      const expenseId = 'exp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    function addExpenseRecord(data, shouldSync = true, existingId = null) {
+      const expenseId = existingId || ('exp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
       const created_em = new Date().toISOString();
 
       const newExpense = {
@@ -969,7 +849,7 @@ function responseJSON(obj) {
           parcela_atual: i,
           total_parcelas: numInstallments,
           valor_parcela: Math.round(valorParcela * 100) / 100,
-          mes_competencia: currentMonth + 1, // 1 to 12
+          mes_competencia: currentMonth + 1, 
           ano_competencia: currentYear,
           criado_em: created_em
         };
@@ -1002,15 +882,11 @@ function responseJSON(obj) {
       const m = String(now.getMonth() + 1).padStart(2, '0');
       const val = `${y}-${m}`;
 
-      document.getElementById('dashFilterMesAno').value = val;
-      document.getElementById('extratoFilterMesAno').value = val;
-    }
-
-    function renderAllViews() {
-      populateFormDropdowns();
-      renderDashboard();
-      renderExtrato();
-      renderCadastros();
+      const dashFilter = document.getElementById('dashFilterMesAno');
+      if (dashFilter) dashFilter.value = val;
+      
+      const extratoFilter = document.getElementById('extratoFilterMesAno');
+      if (extratoFilter) extratoFilter.value = val;
     }
 
     function toggleCartaoSelect() {
@@ -1082,10 +958,20 @@ function responseJSON(obj) {
       if (filterExtResp) filterExtResp.innerHTML = `<option value="ALL">Todos Responsáveis</option>` + respOptions;
 
       const selCartao = document.getElementById('inpCartao');
+      const cardOptions = appState.cards
+        .filter(c => c.ativo === 'SIM' || c.ativo === true)
+        .map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+
       if (selCartao) {
         selCartao.innerHTML = appState.cards
           .filter(c => c.ativo === 'SIM' || c.ativo === true)
           .map(c => `<option value="${c.id}">${c.nome} (Fecha dia ${c.dia_fechamento})</option>`).join('');
+      }
+
+      const filterExtCartao = document.getElementById('extratoFilterCartao');
+      if (filterExtCartao) {
+        filterExtCartao.innerHTML = `<option value="ALL">Todos Cartões/Formas</option>
+          <option value="OTHER">Fora do Cartão (Pix/Dinheiro)</option>` + cardOptions;
       }
 
       updateParcelaPreview();
@@ -1115,6 +1001,7 @@ function responseJSON(obj) {
 
       const cardTotalsMap = {};
       appState.cards.forEach(c => { cardTotalsMap[c.id] = 0; });
+      const catTotalsMap = {};
 
       activeInstallments.forEach(p => {
         const val = parseFloat(p.valor_parcela) || 0;
@@ -1122,6 +1009,7 @@ function responseJSON(obj) {
 
         const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
         if (parentExp) {
+          // Cards
           if (parentExp.forma_pagamento === 'CARD' && parentExp.cartão) {
             totalCartoes += val;
             if (cardTotalsMap[parentExp.cartão] !== undefined) {
@@ -1132,6 +1020,11 @@ function responseJSON(obj) {
           } else {
             totalOutros += val;
           }
+
+          // Categories Calculation
+          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+          const catName = catObj ? catObj.nome : 'Outros';
+          catTotalsMap[catName] = (catTotalsMap[catName] || 0) + val;
         }
       });
 
@@ -1142,9 +1035,9 @@ function responseJSON(obj) {
       const activeCardsWithInvoices = Object.values(cardTotalsMap).filter(v => v > 0).length;
       document.getElementById('dashCartoesCount').innerText = `${activeCardsWithInvoices} cartão(ões) com fatura este mês`;
 
+      // Render Cards Breakdown
       const cardsGrid = document.getElementById('dashCartoesGrid');
       cardsGrid.innerHTML = '';
-
       appState.cards.forEach(c => {
         const cardSum = cardTotalsMap[c.id] || 0;
         const cardElem = document.createElement('div');
@@ -1159,7 +1052,7 @@ function responseJSON(obj) {
               </div>
               <div>
                 <span class="font-bold text-slate-100 text-xs">${c.nome}</span>
-                <p class="text-[10px] text-slate-400">Fecha dia ${c.dia_fechamento} | Vence dia ${c.dia_vencimento}</p>
+                <p class="text-[10px] text-slate-400">Fecha dia ${c.dia_fechamento}</p>
               </div>
             </div>
           </div>
@@ -1171,6 +1064,22 @@ function responseJSON(obj) {
         cardsGrid.appendChild(cardElem);
       });
 
+      // Render Categories Table
+      const sortedCats = Object.entries(catTotalsMap).sort((a,b) => b[1] - a[1]);
+      const tbodyCat = document.getElementById('dashCategoryTable');
+      if (tbodyCat) {
+          if (sortedCats.length > 0) {
+            tbodyCat.innerHTML = sortedCats.map(([cat, val]) => `
+              <tr class="hover:bg-slate-900/50 transition-colors">
+                <td class="p-2.5 font-medium text-slate-300">${cat}</td>
+                <td class="p-2.5 text-right font-bold text-slate-100">${formatMoney(val)}</td>
+              </tr>
+            `).join('');
+          } else {
+            tbodyCat.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-500 text-xs">Nenhum gasto neste período.</td></tr>`;
+          }
+      }
+
       renderFutureMonthsProjection(selYear, selMonth, selectedResp);
       generateAIInsights();
       lucide.createIcons();
@@ -1178,8 +1087,8 @@ function responseJSON(obj) {
 
     function renderFutureMonthsProjection(startYear, startMonth, selectedResp) {
       const container = document.getElementById('futureMonthsContainer');
+      if(!container) return;
       container.innerHTML = '';
-
       let curY = startYear;
       let curM = startMonth;
 
@@ -1217,19 +1126,15 @@ function responseJSON(obj) {
       const box = document.getElementById('aiInsightBox');
       if (!box) return;
 
-      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
-      if (!selectedMesAno) {
-        box.innerHTML = `<p class="text-slate-400">Selecione um mês para ver a análise.</p>`;
-        return;
-      }
+      const dashMesAno = document.getElementById('dashFilterMesAno');
+      const selectedMesAno = dashMesAno ? dashMesAno.value : null;
+      if (!selectedMesAno) return;
 
       const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
-      const activeInstallments = appState.installments.filter(p => {
-        return (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
-      });
+      const activeInstallments = appState.installments.filter(p => (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth));
 
       if (activeInstallments.length === 0) {
-        box.innerHTML = `<p class="text-slate-400">Sem despesas registradas para ${selectedMesAno}. Lançamentos adicionados aparecerão na análise automática.</p>`;
+        box.innerHTML = `<p class="text-slate-400">Sem despesas registradas para ${selectedMesAno}.</p>`;
         return;
       }
 
@@ -1257,23 +1162,11 @@ function responseJSON(obj) {
         }
       });
 
-      let topCat = '-';
-      let topCatVal = 0;
-      Object.entries(categoryTotals).forEach(([cat, val]) => {
-        if (val > topCatVal) {
-          topCatVal = val;
-          topCat = cat;
-        }
-      });
+      let topCat = '-'; let topCatVal = 0;
+      Object.entries(categoryTotals).forEach(([cat, val]) => { if (val > topCatVal) { topCatVal = val; topCat = cat; } });
 
-      let topCard = '-';
-      let topCardVal = 0;
-      Object.entries(cardTotals).forEach(([card, val]) => {
-        if (val > topCardVal) {
-          topCardVal = val;
-          topCard = card;
-        }
-      });
+      let topCard = '-'; let topCardVal = 0;
+      Object.entries(cardTotals).forEach(([card, val]) => { if (val > topCardVal) { topCardVal = val; topCard = card; } });
 
       let futureSum = 0;
       let curY = selYear;
@@ -1311,73 +1204,9 @@ function responseJSON(obj) {
       `;
     }
 
-    function showDetailModal(title, filterType, cardId = null) {
-      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
-      if (!selectedMesAno) return;
-      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
-      const selectedResp = document.getElementById('dashFilterResponsavel').value;
-
-      document.getElementById('modalDetailsTitle').innerText = title;
-      document.getElementById('modalDetailsSubtitle').innerText = `Competência ${selectedMesAno}`;
-
-      const matchingInstallments = appState.installments.filter(p => {
-        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
-        if (!matchMonth) return false;
-
-        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-        if (!parentExp) return false;
-
-        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
-
-        if (filterType === 'CARD') {
-          return parentExp.forma_pagamento === 'CARD';
-        } else if (filterType === 'OTHER') {
-          return parentExp.forma_pagamento !== 'CARD';
-        } else if (filterType === 'CARD_SPECIFIC') {
-          return parentExp.forma_pagamento === 'CARD' && parentExp.cartão === cardId;
-        }
-
-        return true;
-      });
-
-      const container = document.getElementById('modalDetailsList');
-      if (matchingInstallments.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhum gasto encontrado para esta seleção.</p>`;
-      } else {
-        container.innerHTML = matchingInstallments.map(p => {
-          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
-          const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
-          const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
-
-          return `
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-              <div class="space-y-0.5">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-slate-100">${parentExp.estabelecimento}</span>
-                  <span class="px-2 py-0.5 rounded-md bg-slate-800 text-[10px] text-slate-300 border border-slate-700">${catObj ? catObj.nome : '-'}</span>
-                </div>
-                <p class="text-[11px] text-slate-400">
-                  Resp: <strong class="text-slate-300">${respObj ? respObj.nome : '-'}</strong> &bull; 
-                  ${parentExp.forma_pagamento === 'CARD' ? (cardObj ? cardObj.nome : 'Cartão') : 'Pix/Débito'} &bull;
-                  Parcela ${p.parcela_atual}/${p.total_parcelas}
-                </p>
-              </div>
-              <div class="text-right">
-                <span class="font-bold text-emerald-400 text-sm">${formatMoney(p.valor_parcela)}</span>
-                <p class="text-[10px] text-slate-500">${parentExp.data_compra}</p>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      openModal('modalDetails');
-      lucide.createIcons();
-    }
-
     function renderExtrato() {
       const selectedResp = document.getElementById('extratoFilterResponsavel').value;
+      const selectedCartao = document.getElementById('extratoFilterCartao').value;
       const selectedMesAno = document.getElementById('extratoFilterMesAno').value;
       if (!selectedMesAno) return;
 
@@ -1387,21 +1216,25 @@ function responseJSON(obj) {
         const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
         if (!matchMonth) return false;
 
-        if (selectedResp !== 'ALL') {
-          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-          return parentExp && parentExp.responsável === selectedResp;
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+
+        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
+
+        if (selectedCartao !== 'ALL') {
+          if (selectedCartao === 'OTHER') {
+            if (parentExp.forma_pagamento === 'CARD') return false;
+          } else {
+            if (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao) return false;
+          }
         }
+
         return true;
       });
 
       const respSummaryMap = {};
       appState.responsibles.forEach(r => {
-        respSummaryMap[r.id] = {
-          nome: r.nome,
-          cardBreakdown: {},
-          totalOutros: 0,
-          totalGeral: 0
-        };
+        respSummaryMap[r.id] = { nome: r.nome, cardBreakdown: {}, totalOutros: 0, totalGeral: 0 };
       });
 
       activeInstallments.forEach(p => {
@@ -1435,24 +1268,25 @@ function responseJSON(obj) {
         });
 
         if (rData.totalOutros > 0) {
-          cardDetails.push(`Fora do Cartão: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
+          cardDetails.push(`Fora: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
         }
 
-        const summaryCard = document.createElement('div');
-        summaryCard.className = 'glass-card p-4 rounded-2xl space-y-2 border-l-4 border-l-emerald-500';
-        summaryCard.innerHTML = `
-          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span class="font-bold text-slate-100 text-sm flex items-center gap-2">
-              <i data-lucide="user" class="w-4 h-4 text-emerald-400"></i>
-              ${rData.nome}
-            </span>
-            <span class="text-sm font-extrabold text-emerald-400">${formatMoney(rData.totalGeral)}</span>
-          </div>
-          <div class="text-xs text-slate-300 space-y-1">
-            <p>${cardDetails.length > 0 ? cardDetails.join(' &bull; ') : '<span class="text-slate-500">Nenhuma despesa neste mês</span>'}</p>
-          </div>
-        `;
-        containerSummary.appendChild(summaryCard);
+        if (rData.totalGeral > 0) {
+          const summaryCard = document.createElement('div');
+          summaryCard.className = 'glass-card p-4 rounded-2xl space-y-2 border-l-4 border-l-emerald-500';
+          summaryCard.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span class="font-bold text-slate-100 text-sm flex items-center gap-2">
+                <i data-lucide="user" class="w-4 h-4 text-emerald-400"></i> ${rData.nome}
+              </span>
+              <span class="text-sm font-extrabold text-emerald-400">${formatMoney(rData.totalGeral)}</span>
+            </div>
+            <div class="text-xs text-slate-300 space-y-1">
+              <p>${cardDetails.length > 0 ? cardDetails.join(' &bull; ') : '<span class="text-slate-500">-</span>'}</p>
+            </div>
+          `;
+          containerSummary.appendChild(summaryCard);
+        }
       });
 
       const tbody = document.getElementById('extratoTableBody');
@@ -1476,7 +1310,10 @@ function responseJSON(obj) {
           <td class="p-3 text-slate-300">${respObj ? respObj.nome : '-'}</td>
           <td class="p-3"><span class="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-400 font-mono text-[11px]">${p.parcela_atual}/${p.total_parcelas}</span></td>
           <td class="p-3 text-right font-bold text-slate-100">${formatMoney(p.valor_parcela)}</td>
-          <td class="p-3 text-center">
+          <td class="p-3 text-center flex items-center justify-center gap-2">
+            <button onclick="editExpense('${parentExp.id}')" title="Editar despesa" class="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+            </button>
             <button onclick="confirmDeleteExpense('${parentExp.id}')" title="Excluir despesa e parcelas" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
@@ -1486,6 +1323,109 @@ function responseJSON(obj) {
       });
 
       lucide.createIcons();
+    }
+
+    function handleSaveExpense(e) {
+      e.preventDefault();
+
+      const data = {
+        estabelecimento: document.getElementById('inpEstabelecimento').value.trim(),
+        categoria: document.getElementById('inpCategoria').value,
+        responsável: document.getElementById('inpResponsavel').value,
+        forma_pagamento: document.getElementById('inpFormaPagamento').value,
+        cartão: document.getElementById('inpCartao').value,
+        valor_total: document.getElementById('inpValorTotal').value,
+        parcelas: document.getElementById('inpParcelas').value,
+        data_compra: document.getElementById('inpDataCompra').value
+      };
+
+      const editIdInput = document.getElementById('editExpenseId');
+      const editId = editIdInput ? editIdInput.value : '';
+      
+      if (editId) {
+        appState.installments = appState.installments.filter(p => p.despesa_id !== editId);
+        appState.expenses = appState.expenses.filter(e => e.id !== editId);
+        addExpenseRecord(data, true, editId);
+        showToast("Despesa atualizada com sucesso!", "success");
+      } else {
+        addExpenseRecord(data, true);
+        showToast("Despesa cadastrada com sucesso e parcelas geradas!", "success");
+      }
+
+      resetExpenseForm();
+      switchTab('tabDashboard');
+    }
+
+    function editExpense(id) {
+      const exp = appState.expenses.find(e => e.id === id);
+      if(!exp) return;
+
+      document.getElementById('editExpenseId').value = exp.id;
+      document.getElementById('inpEstabelecimento').value = exp.estabelecimento;
+      document.getElementById('inpValorTotal').value = exp.valor_total;
+      document.getElementById('inpCategoria').value = exp.categoria;
+      document.getElementById('inpResponsavel').value = exp.responsável;
+      document.getElementById('inpFormaPagamento').value = exp.forma_pagamento;
+      
+      toggleCartaoSelect();
+      if (exp.forma_pagamento === 'CARD') {
+        document.getElementById('inpCartao').value = exp.cartão;
+      }
+      
+      document.getElementById('inpParcelas').value = exp.parcelas;
+      document.getElementById('inpDataCompra').value = exp.data_compra;
+
+      const btnSave = document.getElementById('btnSaveExpense');
+      if (btnSave) {
+        btnSave.innerHTML = `
+          <i data-lucide="save" class="w-5 h-5"></i>
+          <span>Atualizar Despesa</span>
+        `;
+      }
+      
+      switchTab('tabLancar');
+      updateParcelaPreview();
+      lucide.createIcons();
+    }
+
+    function resetExpenseForm() {
+      const form = document.getElementById('formDespesa');
+      if (form) form.reset();
+      
+      document.getElementById('inpDataCompra').value = new Date().toISOString().split('T')[0];
+      const editInput = document.getElementById('editExpenseId');
+      if(editInput) editInput.value = '';
+      
+      const btn = document.getElementById('btnSaveExpense');
+      if (btn) {
+        btn.innerHTML = `
+          <i data-lucide="check-circle" class="w-5 h-5"></i>
+          <span>Salvar Despesa na Sheet</span>
+        `;
+      }
+      
+      toggleCartaoSelect();
+      lucide.createIcons();
+    }
+
+    function openNewExpenseForm() {
+      resetExpenseForm();
+      switchTab('tabLancar');
+    }
+
+    async function confirmDeleteExpense(expenseId) {
+      const confirmed = await showConfirmModal("Excluir Despesa", "Tem certeza que deseja excluir esta despesa? Todas as parcelas vinculadas serão removidas.");
+      if (confirmed) {
+        deleteExpenseRecord(expenseId);
+        showToast("Despesa removida com sucesso.", "info");
+      }
+    }
+
+    function renderAllViews() {
+      populateFormDropdowns();
+      renderDashboard();
+      renderExtrato();
+      renderCadastros();
     }
 
     function showToast(message, type = 'info') {
@@ -1505,10 +1445,7 @@ function responseJSON(obj) {
       container.appendChild(toast);
       lucide.createIcons({ targets: [toast] });
 
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-
+      requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
       setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
@@ -1521,12 +1458,7 @@ function responseJSON(obj) {
         confirmResolver = resolve;
         document.getElementById('confirmModalTitle').innerText = title;
         document.getElementById('confirmModalMessage').innerText = message;
-        
-        const btn = document.getElementById('btnConfirmModalAction');
-        btn.onclick = () => {
-          closeConfirmModal(true);
-        };
-        
+        document.getElementById('btnConfirmModalAction').onclick = () => closeConfirmModal(true);
         openModal('modalConfirm');
       });
     }
@@ -1539,58 +1471,85 @@ function responseJSON(obj) {
       }
     }
 
-    function handleSaveExpense(e) {
-      e.preventDefault();
+    function showDetailModal(title, filterType, cardId = null) {
+      const dashMesAno = document.getElementById('dashFilterMesAno');
+      const selectedMesAno = dashMesAno ? dashMesAno.value : '';
+      if (!selectedMesAno) return;
+      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+      const dashResp = document.getElementById('dashFilterResponsavel');
+      const selectedResp = dashResp ? dashResp.value : 'ALL';
 
-      const data = {
-        estabelecimento: document.getElementById('inpEstabelecimento').value.trim(),
-        categoria: document.getElementById('inpCategoria').value,
-        responsável: document.getElementById('inpResponsavel').value,
-        forma_pagamento: document.getElementById('inpFormaPagamento').value,
-        cartão: document.getElementById('inpCartao').value,
-        valor_total: document.getElementById('inpValorTotal').value,
-        parcelas: document.getElementById('inpParcelas').value,
-        data_compra: document.getElementById('inpDataCompra').value
-      };
+      document.getElementById('modalDetailsTitle').innerText = title;
+      document.getElementById('modalDetailsSubtitle').innerText = `Competência ${selectedMesAno}`;
 
-      addExpenseRecord(data, true);
+      const matchingInstallments = appState.installments.filter(p => {
+        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+        if (!matchMonth) return false;
 
-      document.getElementById('formDespesa').reset();
-      document.getElementById('inpDataCompra').value = new Date().toISOString().split('T')[0];
-      toggleCartaoSelect();
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
 
-      showToast("Despesa cadastrada com sucesso e parcelas geradas!", "success");
-      switchTab('tabDashboard');
-    }
+        if (filterType === 'CARD') return parentExp.forma_pagamento === 'CARD';
+        else if (filterType === 'OTHER') return parentExp.forma_pagamento !== 'CARD';
+        else if (filterType === 'CARD_SPECIFIC') return parentExp.forma_pagamento === 'CARD' && parentExp.cartão === cardId;
 
-    async function confirmDeleteExpense(expenseId) {
-      const confirmed = await showConfirmModal("Excluir Despesa", "Tem certeza que deseja excluir esta despesa? Todas as parcelas vinculadas serão removidas.");
-      if (confirmed) {
-        deleteExpenseRecord(expenseId);
-        showToast("Despesa removida com sucesso.", "info");
+        return true;
+      });
+
+      const container = document.getElementById('modalDetailsList');
+      if (matchingInstallments.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhum gasto encontrado.</p>`;
+      } else {
+        container.innerHTML = matchingInstallments.map(p => {
+          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+          const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
+          const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
+
+          return `
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-100">${parentExp.estabelecimento}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-800 text-[10px] text-slate-300 border border-slate-700">${catObj ? catObj.nome : '-'}</span>
+                </div>
+                <p class="text-[11px] text-slate-400">
+                  Resp: <strong class="text-slate-300">${respObj ? respObj.nome : '-'}</strong> &bull; 
+                  ${parentExp.forma_pagamento === 'CARD' ? (cardObj ? cardObj.nome : 'Cartão') : 'Pix/Débito'} &bull;
+                  Parcela ${p.parcela_atual}/${p.total_parcelas}
+                </p>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-emerald-400 text-sm">${formatMoney(p.valor_parcela)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
       }
+      openModal('modalDetails');
+      lucide.createIcons();
     }
 
     function switchCadastroSubTab(subTabId) {
       appState.activeCadastroSubTab = subTabId;
-
       document.getElementById('subTabCartoes').classList.add('hidden');
       document.getElementById('subTabResponsaveis').classList.add('hidden');
       document.getElementById('subTabCategorias').classList.add('hidden');
 
-      document.getElementById('btnCadCartoes').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
-      document.getElementById('btnCadResponsaveis').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
-      document.getElementById('btnCadCategorias').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+      document.getElementById('btnCadCartoes').className = 'pb-3 whitespace-nowrap border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+      document.getElementById('btnCadResponsaveis').className = 'pb-3 whitespace-nowrap border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+      document.getElementById('btnCadCategorias').className = 'pb-3 whitespace-nowrap border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
 
       if (subTabId === 'cadCartoes') {
         document.getElementById('subTabCartoes').classList.remove('hidden');
-        document.getElementById('btnCadCartoes').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+        document.getElementById('btnCadCartoes').className = 'pb-3 whitespace-nowrap border-b-2 border-emerald-500 font-semibold text-emerald-400';
       } else if (subTabId === 'cadResponsaveis') {
         document.getElementById('subTabResponsaveis').classList.remove('hidden');
-        document.getElementById('btnCadResponsaveis').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+        document.getElementById('btnCadResponsaveis').className = 'pb-3 whitespace-nowrap border-b-2 border-emerald-500 font-semibold text-emerald-400';
       } else if (subTabId === 'cadCategorias') {
         document.getElementById('subTabCategorias').classList.remove('hidden');
-        document.getElementById('btnCadCategorias').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+        document.getElementById('btnCadCategorias').className = 'pb-3 whitespace-nowrap border-b-2 border-emerald-500 font-semibold text-emerald-400';
       }
     }
 
@@ -1598,12 +1557,8 @@ function responseJSON(obj) {
       const listC = document.getElementById('listCartoes');
       listC.innerHTML = appState.cards.map(c => `
         <div class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs">
-          <div>
-            <span class="font-bold text-slate-100">${c.nome}</span>
-            <p class="text-[11px] text-slate-400">Fecha dia ${c.dia_fechamento} &bull; Vence dia ${c.dia_vencimento}</p>
-          </div>
+          <div><span class="font-bold text-slate-100">${c.nome}</span><p class="text-[11px] text-slate-400">Fecha dia ${c.dia_fechamento}</p></div>
           <div class="flex items-center gap-2">
-            <button onclick="editCartao('${c.id}')" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
             <button onclick="deleteCartao('${c.id}')" class="p-1.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
           </div>
         </div>
@@ -1628,182 +1583,98 @@ function responseJSON(obj) {
       lucide.createIcons();
     }
 
-    function handleSaveCartao(e) {
-      e.preventDefault();
-      const id = document.getElementById('cadCartaoId').value || 'c_' + Date.now();
-      const nome = document.getElementById('cadCartaoNome').value.trim();
-      const dia_fechamento = parseInt(document.getElementById('cadCartaoFechamento').value, 10);
-      const dia_vencimento = parseInt(document.getElementById('cadCartaoVencimento').value, 10);
-
-      const existingIdx = appState.cards.findIndex(c => c.id === id);
-      const obj = { id, nome, dia_fechamento, dia_vencimento, ativo: 'SIM' };
-
-      if (existingIdx >= 0) {
-        appState.cards[existingIdx] = obj;
-      } else {
-        appState.cards.push(obj);
-      }
-
-      resetCartaoForm();
-      syncToGoogleSheets();
-      renderAllViews();
-    }
-
-    function editCartao(id) {
-      const card = appState.cards.find(c => c.id === id);
-      if (!card) return;
-      document.getElementById('cadCartaoId').value = card.id;
-      document.getElementById('cadCartaoNome').value = card.nome;
-      document.getElementById('cadCartaoFechamento').value = card.dia_fechamento;
-      document.getElementById('cadCartaoVencimento').value = card.dia_vencimento;
-      document.getElementById('cartaoFormTitle').innerText = 'Editar Cartão';
-    }
-
-    function resetCartaoForm() {
-      document.getElementById('cadCartaoId').value = '';
+    function handleSaveCartao(e) { e.preventDefault(); 
+      const id = 'c_' + Date.now();
+      appState.cards.push({
+        id, nome: document.getElementById('cadCartaoNome').value.trim(),
+        dia_fechamento: parseInt(document.getElementById('cadCartaoFechamento').value, 10),
+        dia_vencimento: parseInt(document.getElementById('cadCartaoVencimento').value, 10),
+        ativo: 'SIM'
+      });
       document.getElementById('cadCartaoNome').value = '';
-      document.getElementById('cadCartaoFechamento').value = '';
-      document.getElementById('cadCartaoVencimento').value = '';
-      document.getElementById('cartaoFormTitle').innerText = 'Novo Cartão';
+      syncToGoogleSheets(); renderAllViews(); showToast("Cartão salvo.", "success");
     }
+    function resetCartaoForm() {
+       document.getElementById('cadCartaoNome').value = '';
+       document.getElementById('cadCartaoFechamento').value = '';
+       document.getElementById('cadCartaoVencimento').value = '';
+    }
+    async function deleteCartao(id) { if(await showConfirmModal("Excluir", "Remover cartão?")) { appState.cards = appState.cards.filter(c => c.id !== id); syncToGoogleSheets(); renderAllViews(); } }
+    
+    function handleSaveResponsavel(e) { e.preventDefault(); appState.responsibles.push({ id: 'r_' + Date.now(), nome: document.getElementById('cadRespNome').value.trim(), ativo: 'SIM' }); document.getElementById('cadRespNome').value = ''; syncToGoogleSheets(); renderAllViews(); }
+    async function deleteResponsavel(id) { if(await showConfirmModal("Excluir", "Remover responsável?")) { appState.responsibles = appState.responsibles.filter(r => r.id !== id); syncToGoogleSheets(); renderAllViews(); } }
 
-    async function deleteCartao(id) {
-      const confirmed = await showConfirmModal("Excluir Cartão", "Deseja excluir este cartão de crédito?");
-      if (confirmed) {
-        appState.cards = appState.cards.filter(c => c.id !== id);
-        syncToGoogleSheets();
-        renderAllViews();
-        showToast("Cartão removido.", "info");
-      }
-    }
-
-    function handleSaveResponsavel(e) {
-      e.preventDefault();
-      const nome = document.getElementById('cadRespNome').value.trim();
-      const newResp = { id: 'r_' + Date.now(), nome, ativo: 'SIM' };
-      appState.responsibles.push(newResp);
-      document.getElementById('cadRespNome').value = '';
-      syncToGoogleSheets();
-      renderAllViews();
-      showToast("Responsável adicionado.", "success");
-    }
-
-    async function deleteResponsavel(id) {
-      const confirmed = await showConfirmModal("Excluir Responsável", "Deseja remover este responsável?");
-      if (confirmed) {
-        appState.responsibles = appState.responsibles.filter(r => r.id !== id);
-        syncToGoogleSheets();
-        renderAllViews();
-        showToast("Responsável removido.", "info");
-      }
-    }
-
-    function handleSaveCategoria(e) {
-      e.preventDefault();
-      const nome = document.getElementById('cadCatNome').value.trim();
-      const newCat = { id: 'cat_' + Date.now(), nome, ativo: 'SIM' };
-      appState.categories.push(newCat);
-      document.getElementById('cadCatNome').value = '';
-      syncToGoogleSheets();
-      renderAllViews();
-      showToast("Categoria adicionada.", "success");
-    }
-
-    async function deleteCategoria(id) {
-      const confirmed = await showConfirmModal("Excluir Categoria", "Deseja remover esta categoria?");
-      if (confirmed) {
-        appState.categories = appState.categories.filter(c => c.id !== id);
-        syncToGoogleSheets();
-        renderAllViews();
-        showToast("Categoria removida.", "info");
-      }
-    }
+    function handleSaveCategoria(e) { e.preventDefault(); appState.categories.push({ id: 'cat_' + Date.now(), nome: document.getElementById('cadCatNome').value.trim(), ativo: 'SIM' }); document.getElementById('cadCatNome').value = ''; syncToGoogleSheets(); renderAllViews(); }
+    async function deleteCategoria(id) { if(await showConfirmModal("Excluir", "Remover categoria?")) { appState.categories = appState.categories.filter(c => c.id !== id); syncToGoogleSheets(); renderAllViews(); } }
 
     function switchTab(tabId) {
       appState.activeTab = tabId;
-
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(tabId).classList.remove('hidden');
 
       const deskTabs = ['Dashboard', 'Lancar', 'Extrato', 'Cadastros'];
       deskTabs.forEach(t => {
         const btn = document.getElementById(`deskNavTab${t}`);
-        if (`tab${t}` === tabId) {
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white flex items-center gap-2';
-        } else {
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2';
-        }
+        if(btn) btn.className = `px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 ${`tab${t}` === tabId ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`;
       });
 
       deskTabs.forEach(t => {
         const btn = document.getElementById(`navTab${t}`);
-        if (`tab${t}` === tabId) {
-          btn.className = 'flex flex-col items-center py-1.5 px-2 text-emerald-400 font-medium';
-        } else {
-          btn.className = 'flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200';
-        }
+        if(btn) btn.className = `flex flex-col items-center py-1.5 px-2 ${`tab${t}` === tabId ? 'text-emerald-400 font-medium' : 'text-slate-400 hover:text-slate-200'}`;
       });
-
-      if (tabId === 'tabLancar') {
-        document.getElementById('inpDataCompra').value = new Date().toISOString().split('T')[0];
-        toggleCartaoSelect();
-      }
-
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function openModal(modalId) {
-      document.getElementById(modalId).classList.remove('hidden');
-    }
+    function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+    function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
 
-    function closeModal(modalId) {
-      document.getElementById(modalId).classList.add('hidden');
-    }
-
-    function openSyncModal() {
-      document.getElementById('inpWebAppUrl').value = appState.webAppUrl;
-      openModal('modalSync');
-    }
-
+    function openSyncModal() { document.getElementById('inpWebAppUrl').value = appState.webAppUrl; openModal('modalSync'); }
     function saveSyncSettings() {
-      const rawUrl = document.getElementById('inpWebAppUrl').value.trim();
-      const normalized = normalizeWebAppUrl(rawUrl);
+      const normalized = normalizeWebAppUrl(document.getElementById('inpWebAppUrl').value);
       appState.webAppUrl = normalized;
       localStorage.setItem('fincontrol_sheet_url', normalized);
       closeModal('modalSync');
-      if (normalized) {
-        fetchFromGoogleSheets();
-      } else {
-        updateSyncBadge('OFFLINE (Local)');
-      }
+      normalized ? fetchFromGoogleSheets() : updateSyncBadge('OFFLINE (Local)');
     }
 
-    function copyAppsScriptCode() {
-      const code = document.getElementById('codeAppsScript').innerText;
-      const textArea = document.createElement('textarea');
-      textArea.value = code;
-      textArea.style.position = 'fixed';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.select();
+    function formatMoney(val) { return (parseFloat(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
-      let success = false;
+    // Função para gerar a imagem do Extrato
+    async function downloadExtratoImage() {
+      const target = document.getElementById('extratoExportArea');
+      if (!target) return;
+
+      showToast("Gerando imagem do extrato...", "info");
+
       try {
-        success = document.execCommand('copy');
+        // Esconde os botões de ação (editar/excluir) para não saírem na imagem
+        const actionCells = target.querySelectorAll('th:last-child, td:last-child');
+        actionCells.forEach(cell => cell.style.display = 'none');
+
+        const canvas = await html2canvas(target, {
+          backgroundColor: '#020617', // Cor de fundo consistente (slate-950)
+          scale: 2, // Aumenta a resolução
+          useCORS: true,
+          logging: false
+        });
+
+        // Restaura a exibição
+        actionCells.forEach(cell => cell.style.display = '');
+
+        const imgData = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        const mesAno = document.getElementById('extratoFilterMesAno').value;
+        link.download = `extrato-fincontrol-${mesAno}.png`;
+        link.href = imgData;
+        link.click();
+        
+        showToast("Imagem gerada e salva com sucesso!", "success");
       } catch (err) {
-        console.error("Clipboard execCommand error:", err);
+        console.error("Erro ao gerar imagem:", err);
+        showToast("Erro ao gerar a imagem.", "error");
+        const actionCells = target.querySelectorAll('th:last-child, td:last-child');
+        actionCells.forEach(cell => cell.style.display = '');
       }
-      document.body.removeChild(textArea);
-
-      if (success) {
-        showToast("Código Apps Script copiado para a área de transferência!", "success");
-      } else {
-        showToast("Selecione o texto e pressione Ctrl+C para copiar.", "info");
-      }
-    }
-
-    function formatMoney(val) {
-      return (parseFloat(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
   </script>
 </body>
