@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FinControl - Google Sheets Sync</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 1);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .modal-backdrop {
+      background: rgba(2, 6, 23, 0.8);
+      backdrop-filter: blur(6px);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+      50% { box-shadow: 0 0 25px rgba(34, 197, 94, 0.5); }
+    }
+    .glow-effect {
+      animation: pulseGlow 3s infinite;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden antialiased">
+
+  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-none text-slate-100">FinControl</h1>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span id="syncStatusText" class="text-xs text-slate-400 font-medium">Google Sheets Conectado</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="openSyncModal()" title="Configurar Google Sheet" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 flex items-center gap-2 text-xs font-medium">
+          <i data-lucide="sheet" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden sm:inline">Google Sheet</span>
+        </button>
+        <button onclick="switchTab('tabLancar')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-1.5">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Lançar Despesa</span>
+          <span class="sm:hidden">Lançar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-28 md:pb-8 space-y-6">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tabDashboard" class="tab-content space-y-6">
+      
+      <!-- Filters Row -->
+      <div class="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i>
+          <span class="text-sm font-semibold text-slate-200">Filtros</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <div>
+            <select id="dashFilterResponsavel" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="ALL">Todos Responsáveis</option>
+            </select>
+          </div>
+          <div>
+            <input type="month" id="dashFilterMesAno" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Total Mês -->
+        <div onclick="showDetailModal('Total do Mês', 'ALL')" class="glass-card p-5 rounded-2xl cursor-pointer hover:border-slate-600 transition-all group relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-emerald-500/10 group-hover:text-emerald-500/20 transition-all">
+            <i data-lucide="calendar" class="w-16 h-16"></i>
+          </div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total do Mês</span>
+          <div class="text-2xl font-bold text-white mt-1" id="dashTotalMes">R$ 0,00</div>
+          <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+            <i data-lucide="info" class="w-3 h-3 text-emerald-400"></i>
+            <span>Competência selecionada</span>
+          </p>
+        </div>
+
+        <!-- Cartões Total -->
+        <div onclick="showDetailModal('Gastos em Cartão', 'CARD')" class="glass-card p-5 rounded-2xl cursor-pointer hover:border-slate-600 transition-all group relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-teal-500/10 group-hover:text-teal-500/20 transition-all">
+            <i data-lucide="credit-card" class="w-16 h-16"></i>
+          </div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total em Cartões</span>
+          <div class="text-2xl font-bold text-teal-300 mt-1" id="dashTotalCartoes">R$ 0,00</div>
+          <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+            <i data-lucide="corner-down-right" class="w-3 h-3 text-teal-400"></i>
+            <span id="dashCartoesCount">0 cartões ativos com fatura</span>
+          </p>
+        </div>
+
+        <!-- Fora do Cartão -->
+        <div onclick="showDetailModal('Gastos Fora do Cartão', 'OTHER')" class="glass-card p-5 rounded-2xl cursor-pointer hover:border-slate-600 transition-all group relative overflow-hidden">
+          <div class="absolute right-3 top-3 text-indigo-500/10 group-hover:text-indigo-500/20 transition-all">
+            <i data-lucide="banknote" class="w-16 h-16"></i>
+          </div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fora do Cartão</span>
+          <div class="text-2xl font-bold text-indigo-300 mt-1" id="dashTotalOutros">R$ 0,00</div>
+          <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+            <i data-lucide="zap" class="w-3 h-3 text-indigo-400"></i>
+            <span>Pix, Débito e Dinheiro</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Cards Breakdown Grid -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <i data-lucide="credit-card" class="w-4 h-4 text-emerald-400"></i>
+          Detalhamento por Cartão no Mês
+        </h3>
+        <div id="dashCartoesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- AI Insights Section -->
+      <div class="glass-card p-5 rounded-2xl border-emerald-500/20 relative overflow-hidden bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-emerald-950/20">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-100">Análise Inteligente de Gastos</h3>
+              <p class="text-[11px] text-slate-400">Insights gerados em tempo real com dados da sua Sheet</p>
+            </div>
+          </div>
+          <button onclick="generateAIInsights()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all border border-slate-700 flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Atualizar</span>
+          </button>
+        </div>
+        <div id="aiInsightBox" class="text-xs text-slate-300 leading-relaxed space-y-2 pt-1">
+          <div class="animate-pulse flex space-x-3 items-center py-2">
+            <div class="h-2 bg-slate-700 rounded w-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Future Months Projection -->
+      <div class="glass-card p-5 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+            <h3 class="text-sm font-semibold text-slate-200">Visão dos Próximos Meses (Comprometido)</h3>
+          </div>
+          <span class="text-[11px] text-slate-400">Próximos 6 meses</span>
+        </div>
+        <div id="futureMonthsContainer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: LANÇAR DESPESA (FORM TAB) -->
+    <section id="tabLancar" class="tab-content hidden max-w-2xl mx-auto">
+      <div class="glass-card p-6 rounded-3xl space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <i data-lucide="plus-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-white">Lançar Nova Despesa</h2>
+              <p class="text-xs text-slate-400">Cálculo automático de fatura e parcelamento</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="formDespesa" onsubmit="handleSaveExpense(event)" class="space-y-4">
+          <!-- Estabelecimento & Valor -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Estabelecimento *</label>
+              <input type="text" id="inpEstabelecimento" required placeholder="Ex: Supermercado, Amazon" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Valor Total (R$) *</label>
+              <input type="number" step="0.01" min="0.01" id="inpValorTotal" required placeholder="0,00" oninput="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Categoria & Responsavel -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Categoria *</label>
+              <select id="inpCategoria" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <!-- Options -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Responsável *</label>
+              <select id="inpResponsavel" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <!-- Options -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Forma de Pagamento & Cartão -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Forma de Pagamento *</label>
+              <select id="inpFormaPagamento" onchange="toggleCartaoSelect()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <option value="CARD">Cartão de Crédito (CARD)</option>
+                <option value="OTHER">Outros (Pix, Débito, Dinheiro)</option>
+              </select>
+            </div>
+            <div id="boxCartaoSelect">
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Cartão *</label>
+              <select id="inpCartao" onchange="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <!-- Options -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Parcelas & Data -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Número de Parcelas</label>
+              <input type="number" id="inpParcelas" min="1" max="60" value="1" oninput="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Data da Compra *</label>
+              <input type="date" id="inpDataCompra" required onchange="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Calculation Preview Alert -->
+          <div id="parcelaPreviewBox" class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i>
+              <span id="parcelaPreviewText">1x de R$ 0,00</span>
+            </div>
+            <span id="parcelaCompetenciaText" class="text-emerald-400 font-medium">Entra na fatura de ...</span>
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2">
+              <i data-lucide="check-circle" class="w-5 h-5"></i>
+              <span>Salvar Despesa na Sheet</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: EXTRATO POR RESPONSÁVEL -->
+    <section id="tabExtrato" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i>
+            Extrato por Responsável
+          </h2>
+          <p class="text-xs text-slate-400">Consolidado e acerto individual de contas</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <select id="extratoFilterResponsavel" onchange="renderExtrato()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <!-- Options -->
+          </select>
+          <input type="month" id="extratoFilterMesAno" onchange="renderExtrato()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Summary Cards per Responsible -->
+      <div id="extratoCardsSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Table / Detailed List -->
+      <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Despesas Detalhadas no Período</h3>
+          <span id="extratoItemCount" class="text-xs text-slate-400">0 itens</span>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="p-3">Estabelecimento</th>
+                <th class="p-3">Categoria</th>
+                <th class="p-3">Forma / Cartão</th>
+                <th class="p-3">Responsável</th>
+                <th class="p-3">Parcela</th>
+                <th class="p-3 text-right">Valor</th>
+                <th class="p-3 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="extratoTableBody" class="divide-y divide-slate-800/60 text-slate-200">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CADASTROS (CARDS, RESPONSIVE, CATEGORIES) -->
+    <section id="tabCadastros" class="tab-content hidden space-y-6">
+      
+      <!-- Sub Navigation -->
+      <div class="flex border-b border-slate-800 space-x-6 text-sm">
+        <button onclick="switchCadastroSubTab('cadCartoes')" id="btnCadCartoes" class="pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400">Cartões de Crédito</button>
+        <button onclick="switchCadastroSubTab('cadResponsaveis')" id="btnCadResponsaveis" class="pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Responsáveis</button>
+        <button onclick="switchCadastroSubTab('cadCategorias')" id="btnCadCategorias" class="pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200">Categorias</button>
+      </div>
+
+      <!-- Subtab 1: Cartões -->
+      <div id="subTabCartoes" class="space-y-4">
+        <div class="glass-card p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-slate-200" id="cartaoFormTitle">Novo Cartão</h3>
+          <form onsubmit="handleSaveCartao(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <input type="hidden" id="cadCartaoId">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Nome do Cartão</label>
+              <input type="text" id="cadCartaoNome" required placeholder="Ex: Nubank, Inter" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Dia Fechamento</label>
+              <input type="number" min="1" max="31" id="cadCartaoFechamento" required placeholder="Ex: 4" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Dia Vencimento</label>
+              <input type="number" min="1" max="31" id="cadCartaoVencimento" required placeholder="Ex: 11" class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div class="sm:col-span-4 flex justify-end gap-2 pt-2">
+              <button type="button" onclick="resetCartaoForm()" class="px-3 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Cancelar</button>
+              <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl">Salvar Cartão</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- List Cartões -->
+        <div class="glass-card rounded-2xl p-4">
+          <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Cartões Cadastrados</h4>
+          <div id="listCartoes" class="space-y-2">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtab 2: Responsáveis -->
+      <div id="subTabResponsaveis" class="space-y-4 hidden">
+        <div class="glass-card p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-slate-200">Novo Responsável</h3>
+          <form onsubmit="handleSaveResponsavel(event)" class="flex gap-3">
+            <input type="hidden" id="cadRespId">
+            <input type="text" id="cadRespNome" required placeholder="Ex: Rodrigo, Maria" class="flex-1 bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl">Salvar</button>
+          </form>
+        </div>
+
+        <div class="glass-card rounded-2xl p-4">
+          <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Responsáveis Cadastrados</h4>
+          <div id="listResponsaveis" class="space-y-2">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtab 3: Categorias -->
+      <div id="subTabCategorias" class="space-y-4 hidden">
+        <div class="glass-card p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-slate-200">Nova Categoria</h3>
+          <form onsubmit="handleSaveCategoria(event)" class="flex gap-3">
+            <input type="hidden" id="cadCatId">
+            <input type="text" id="cadCatNome" required placeholder="Ex: Alimentação, Transporte, Lazer" class="flex-1 bg-slate-900 border border-slate-700 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl">Salvar</button>
+          </form>
+        </div>
+
+        <div class="glass-card rounded-2xl p-4">
+          <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Categorias Cadastradas</h4>
+          <div id="listCategorias" class="space-y-2">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-2 md:hidden">
+    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
+      <button onclick="switchTab('tabDashboard')" id="navTabDashboard" class="flex flex-col items-center py-1.5 px-2 text-emerald-400 font-medium">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+        <span class="text-[10px] mt-1">Dash</span>
+      </button>
+      <button onclick="switchTab('tabLancar')" id="navTabLancar" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+        <i data-lucide="plus-square" class="w-5 h-5"></i>
+        <span class="text-[10px] mt-1">Lançar</span>
+      </button>
+      <button onclick="switchTab('tabExtrato')" id="navTabExtrato" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+        <i data-lucide="receipt" class="w-5 h-5"></i>
+        <span class="text-[10px] mt-1">Extrato</span>
+      </button>
+      <button onclick="switchTab('tabCadastros')" id="navTabCadastros" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+        <span class="text-[10px] mt-1">Cadastros</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Desktop Floating Nav bar -->
+  <aside class="hidden md:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-slate-900/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-1.5 shadow-2xl space-x-1">
+    <button onclick="switchTab('tabDashboard')" id="deskNavTabDashboard" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white flex items-center gap-2">
+      <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+    </button>
+    <button onclick="switchTab('tabLancar')" id="deskNavTabLancar" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+      <i data-lucide="plus-circle" class="w-4 h-4"></i> Lançar Despesa
+    </button>
+    <button onclick="switchTab('tabExtrato')" id="deskNavTabExtrato" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+      <i data-lucide="receipt" class="w-4 h-4"></i> Extrato por Responsável
+    </button>
+    <button onclick="switchTab('tabCadastros')" id="deskNavTabCadastros" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+      <i data-lucide="settings" class="w-4 h-4"></i> Cadastros
+    </button>
+  </aside>
+
+  <!-- MODAL: GOOGLE SHEET SYNC SETTINGS -->
+  <div id="modalSync" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-400"></i>
+          <h3 class="text-base font-bold text-white">Integração Google Sheets</h3>
+        </div>
+        <button onclick="closeModal('modalSync')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300">
+        <p>
+          Este aplicativo utiliza o <strong>Google Sheets</strong> como banco de dados principal. Para conectar a sua planilha existente:
+        </p>
+        <ol class="list-decimal list-inside space-y-1.5 text-slate-400 pl-1">
+          <li>Abra sua planilha no Google Drive.</li>
+          <li>Acesse <strong>Extensões > Apps Script</strong>.</li>
+          <li>Cole o código Apps Script fornecido abaixo e clique em <strong>Implantar > Nova Implantação (Web App)</strong>.</li>
+          <li>Escolha permissão: <em>"Qualquer pessoa" (Anyone)</em>.</li>
+          <li>Copie o URL da Web App gerado e cole no campo abaixo.</li>
+        </ol>
+
+        <div>
+          <label class="block font-semibold text-slate-200 mb-1">URL do Apps Script (Web App Endpoint)</label>
+          <input type="url" id="inpWebAppUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+
+        <div class="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-200 text-[11px]">Código Apps Script para a Planilha:</span>
+            <button onclick="copyAppsScriptCode()" class="text-emerald-400 hover:text-emerald-300 text-[11px] font-semibold flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar Código
+            </button>
+          </div>
+          <pre id="codeAppsScript" class="text-[10px] text-emerald-300/90 bg-slate-950 p-2.5 rounded-lg overflow-x-auto max-h-36 custom-scrollbar font-mono">
+function doGet(e) {
+  return handleRequest(e);
+}
+function doPost(e) {
+  return handleRequest(e);
+}
+function handleRequest(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var param = e.parameter.action || (e.postData ? JSON.parse(e.postData.contents).action : '');
+    
+    if (param === 'readAll') {
+      var data = {
+        cards: getSheetData(ss, 'Cartões'),
+        responsibles: getSheetData(ss, 'Responsáveis'),
+        categories: getSheetData(ss, 'Categorias'),
+        expenses: getSheetData(ss, 'Despesas'),
+        installments: getSheetData(ss, 'Parcelas')
+      };
+      return responseJSON(data);
+    }
+    
+    if (e.postData) {
+      var payload = JSON.parse(e.postData.contents);
+      if (payload.action === 'syncAll') {
+        saveSheetData(ss, 'Cartões', payload.cards);
+        saveSheetData(ss, 'Responsáveis', payload.responsibles);
+        saveSheetData(ss, 'Categorias', payload.categories);
+        saveSheetData(ss, 'Despesas', payload.expenses);
+        saveSheetData(ss, 'Parcelas', payload.installments);
+        return responseJSON({ status: 'success' });
+      }
+    }
+    return responseJSON({ status: 'ok' });
+  } catch(err) {
+    return responseJSON({ error: err.toString() });
+  } finally {
+    lock.releaseLock();
+  }
+}
+function getSheetData(ss, sheetName) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  var values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return [];
+  var headers = values[0];
+  var result = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = {};
+    for (var j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[i][j];
+    }
+    result.push(row);
+  }
+  return result;
+}
+function saveSheetData(ss, sheetName, dataArray) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+  sheet.clearContents();
+  if (!dataArray || dataArray.length === 0) return;
+  var headers = Object.keys(dataArray[0]);
+  sheet.appendRow(headers);
+  var rows = dataArray.map(function(item) {
+    return headers.map(function(h) { return item[h] !== undefined ? item[h] : ''; });
+  });
+  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+}
+function responseJSON(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+          </pre>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="saveSyncSettings()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all">
+          Salvar & Testar Conexão
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EXPENSE DETAILS BREAKDOWN -->
+  <div id="modalDetails" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="glass-card max-w-2xl w-full rounded-3xl p-6 space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 id="modalDetailsTitle" class="text-base font-bold text-white">Detalhamento de Gastos</h3>
+          <p id="modalDetailsSubtitle" class="text-xs text-slate-400">Listagem de itens que compõem este valor</p>
+        </div>
+        <button onclick="closeModal('modalDetails')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="modalDetailsList" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+  <!-- MODAL: CONFIRM DIALOG -->
+  <div id="modalConfirm" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="glass-card max-w-sm w-full rounded-2xl p-5 space-y-4 text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <h3 id="confirmModalTitle" class="text-sm font-bold text-white">Confirmar Ação</h3>
+      <p id="confirmModalMessage" class="text-xs text-slate-300">Tem certeza de que deseja realizar esta ação?</p>
+      <div class="flex items-center justify-center gap-3 pt-2">
+        <button onclick="closeConfirmModal(false)" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl">Cancelar</button>
+        <button id="btnConfirmModalAction" class="flex-1 py-2 px-3 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-900/30">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global State
+    let appState = {
+      webAppUrl: localStorage.getItem('fincontrol_sheet_url') || '',
+      cards: [],
+      responsibles: [],
+      categories: [],
+      expenses: [],
+      installments: [],
+      activeTab: 'tabDashboard',
+      activeCadastroSubTab: 'cadCartoes'
+    };
+
+    // Default Fallback Initial Data
+    const defaultData = {
+      cards: [
+        { id: 'c1', nome: 'Nubank', dia_fechamento: 4, dia_vencimento: 11, ativo: 'SIM' },
+        { id: 'c2', nome: 'Inter', dia_fechamento: 15, dia_vencimento: 22, ativo: 'SIM' },
+        { id: 'c3', nome: 'Itaú', dia_fechamento: 25, dia_vencimento: 2, ativo: 'SIM' }
+      ],
+      responsibles: [
+        { id: 'r1', nome: 'Rodrigo', ativo: 'SIM' },
+        { id: 'r2', nome: 'Mãe', ativo: 'SIM' },
+        { id: 'r3', nome: 'Casa', ativo: 'SIM' }
+      ],
+      categories: [
+        { id: 'cat1', nome: 'Mercado', ativo: 'SIM' },
+        { id: 'cat2', nome: 'Farmácia', ativo: 'SIM' },
+        { id: 'cat3', nome: 'Lazer', ativo: 'SIM' },
+        { id: 'cat4', nome: 'Assinaturas', ativo: 'SIM' },
+        { id: 'cat5', nome: 'Serviços', ativo: 'SIM' }
+      ],
+      expenses: [],
+      installments: []
+    };
+
+    // Initialize Application
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      setDefaultMonthPicker();
+      loadLocalData();
+
+      if (appState.webAppUrl) {
+        await fetchFromGoogleSheets();
+      } else {
+        updateSyncBadge('OFFLINE (Local)');
+      }
+
+      // Seed initial sample data if completely empty
+      if (appState.expenses.length === 0) {
+        seedSampleData();
+      }
+
+      populateFormDropdowns();
+      toggleCartaoSelect();
+      renderAllViews();
+    });
+
+    /**
+     * REGRA DO CARTÃO (Card Closing Date Logic):
+     * Given purchase date and card's closing day (dia_fechamento):
+     * If purchase day <= closing day -> statement month is the current month of purchase date.
+     * If purchase day > closing day -> statement month is the NEXT month.
+     * For OTHER payment method -> statement month is simple month/year of purchase date.
+     */
+    function calculateCompetency(dateStr, paymentMethod, cardId) {
+      if (!dateStr) return { year: new Date().getFullYear(), month: new Date().getMonth() };
+      const dateParts = dateStr.split('-');
+      let year = parseInt(dateParts[0], 10);
+      let month = parseInt(dateParts[1], 10) - 1; // 0-indexed JavaScript month
+      const day = parseInt(dateParts[2], 10);
+
+      if (paymentMethod === 'CARD' && cardId) {
+        const card = appState.cards.find(c => c.id === cardId);
+        if (card) {
+          const closingDay = parseInt(card.dia_fechamento, 10);
+          if (day > closingDay) {
+            // Falls into next month's invoice
+            month += 1;
+            if (month > 11) {
+              month = 0;
+              year += 1;
+            }
+          }
+        }
+      }
+
+      return { year, month }; // Returns target competency year and 0-indexed month
+    }
+
+    function formatCompetencyKey(year, monthZeroIdx) {
+      const mStr = String(monthZeroIdx + 1).padStart(2, '0');
+      return `${year}-${mStr}`;
+    }
+
+    function getMonthLabel(year, monthZeroIdx) {
+      const monthsStr = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const shortYear = String(year).slice(-2);
+      return `${monthsStr[monthZeroIdx]}/${shortYear}`;
+    }
+
+    function loadLocalData() {
+      const stored = localStorage.getItem('fincontrol_app_data');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          appState.cards = parsed.cards || defaultData.cards;
+          appState.responsibles = parsed.responsibles || defaultData.responsibles;
+          appState.categories = parsed.categories || defaultData.categories;
+          appState.expenses = parsed.expenses || [];
+          appState.installments = parsed.installments || [];
+        } catch (e) {
+          console.error("Error parsing local data", e);
+        }
+      } else {
+        appState.cards = [...defaultData.cards];
+        appState.responsibles = [...defaultData.responsibles];
+        appState.categories = [...defaultData.categories];
+      }
+    }
+
+    function saveLocalData() {
+      localStorage.setItem('fincontrol_app_data', JSON.stringify({
+        cards: appState.cards,
+        responsibles: appState.responsibles,
+        categories: appState.categories,
+        expenses: appState.expenses,
+        installments: appState.installments
+      }));
+    }
+
+    function normalizeWebAppUrl(url) {
+      if (!url) return '';
+      let cleanUrl = url.trim();
+      if (!cleanUrl) return '';
+
+      // If user pasted just the Script Deployment ID (e.g., AKfycbz...)
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        if (cleanUrl.includes('script.google.com')) {
+          cleanUrl = 'https://' + cleanUrl;
+        } else {
+          cleanUrl = `https://script.google.com/macros/s/${cleanUrl}/exec`;
+        }
+      }
+      return cleanUrl;
+    }
+
+    async function syncToGoogleSheets() {
+      saveLocalData();
+      if (!appState.webAppUrl) return;
+
+      const normalizedUrl = normalizeWebAppUrl(appState.webAppUrl);
+      if (!normalizedUrl) return;
+
+      updateSyncBadge('Sincronizando...');
+      try {
+        const payload = {
+          action: 'syncAll',
+          cards: appState.cards,
+          responsibles: appState.responsibles,
+          categories: appState.categories,
+          expenses: appState.expenses,
+          installments: appState.installments
+        };
+
+        const res = await fetch(normalizedUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.status === 'success' || data.status === 'ok') {
+          updateSyncBadge('Google Sheets Conectado');
+        } else {
+          updateSyncBadge('Erro na resposta');
+        }
+      } catch (err) {
+        console.error("Sheet sync error:", err);
+        updateSyncBadge('Erro ao sincronizar');
+      }
+    }
+
+    async function fetchFromGoogleSheets() {
+      if (!appState.webAppUrl) return;
+
+      const normalizedUrl = normalizeWebAppUrl(appState.webAppUrl);
+      if (!normalizedUrl) {
+        updateSyncBadge('URL Inválida');
+        return;
+      }
+
+      try {
+        new URL(normalizedUrl);
+      } catch (e) {
+        console.error('URL parse error:', normalizedUrl, e);
+        updateSyncBadge('URL Inválida');
+        showToast('A URL inserida é inválida. Cole a URL completa do Apps Script.', 'error');
+        return;
+      }
+
+      updateSyncBadge('Carregando...');
+      try {
+        const delimiter = normalizedUrl.includes('?') ? '&' : '?';
+        const url = `${normalizedUrl}${delimiter}action=readAll&t=${Date.now()}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data && !data.error) {
+          if (Array.isArray(data.cards) && data.cards.length > 0) appState.cards = data.cards;
+          if (Array.isArray(data.responsibles) && data.responsibles.length > 0) appState.responsibles = data.responsibles;
+          if (Array.isArray(data.categories) && data.categories.length > 0) appState.categories = data.categories;
+          if (Array.isArray(data.expenses)) appState.expenses = data.expenses;
+          if (Array.isArray(data.installments)) appState.installments = data.installments;
+
+          saveLocalData();
+          updateSyncBadge('Google Sheets Conectado');
+          renderAllViews();
+        } else {
+          updateSyncBadge('Erro no Endpoint');
+        }
+      } catch (e) {
+        console.error("Error reading Google Sheets:", e);
+        updateSyncBadge('Offline / Falha na Rede');
+      }
+    }
+
+    function updateSyncBadge(statusText) {
+      const dot = document.getElementById('syncStatusDot');
+      const txt = document.getElementById('syncStatusText');
+      if (txt) txt.innerText = statusText;
+
+      if (dot) {
+        if (statusText.includes('Conectado')) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block';
+        } else if (statusText.includes('Carregando') || statusText.includes('Sincronizando')) {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-rose-500 inline-block';
+        }
+      }
+    }
+
+    function seedSampleData() {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      addExpenseRecord({
+        estabelecimento: 'Supermercado Central',
+        categoria: 'cat1',
+        responsável: 'r1',
+        forma_pagamento: 'CARD',
+        cartão: 'c1',
+        valor_total: 450.00,
+        parcelas: 3,
+        data_compra: todayStr
+      }, false);
+
+      addExpenseRecord({
+        estabelecimento: 'Drogaria São Paulo',
+        categoria: 'cat2',
+        responsável: 'r2',
+        forma_pagamento: 'CARD',
+        cartão: 'c2',
+        valor_total: 120.00,
+        parcelas: 1,
+        data_compra: todayStr
+      }, false);
+
+      addExpenseRecord({
+        estabelecimento: 'Padaria da Esquina',
+        categoria: 'cat1',
+        responsável: 'r1',
+        forma_pagamento: 'OTHER',
+        cartão: '',
+        valor_total: 45.50,
+        parcelas: 1,
+        data_compra: todayStr
+      }, false);
+
+      saveLocalData();
+    }
+
+    function addExpenseRecord(data, shouldSync = true) {
+      const expenseId = 'exp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const created_em = new Date().toISOString();
+
+      const newExpense = {
+        id: expenseId,
+        estabelecimento: data.estabelecimento,
+        categoria: data.categoria,
+        responsável: data.responsável,
+        forma_pagamento: data.forma_pagamento,
+        cartão: data.forma_pagamento === 'CARD' ? data.cartão : '',
+        valor_total: parseFloat(data.valor_total),
+        parcelas: parseInt(data.parcelas, 10),
+        data_compra: data.data_compra,
+        criado_em: created_em
+      };
+
+      appState.expenses.push(newExpense);
+
+      const numInstallments = newExpense.parcelas;
+      const baseValor = Math.floor((newExpense.valor_total / numInstallments) * 100) / 100;
+      const remainder = Math.round((newExpense.valor_total - (baseValor * numInstallments)) * 100) / 100;
+
+      const firstComp = calculateCompetency(newExpense.data_compra, newExpense.forma_pagamento, newExpense.cartão);
+
+      let currentYear = firstComp.year;
+      let currentMonth = firstComp.month;
+
+      for (let i = 1; i <= numInstallments; i++) {
+        let valorParcela = baseValor;
+        if (i === 1) valorParcela += remainder;
+
+        const parcelaRecord = {
+          id: `parc_${expenseId}_${i}`,
+          despesa_id: expenseId,
+          parcela_atual: i,
+          total_parcelas: numInstallments,
+          valor_parcela: Math.round(valorParcela * 100) / 100,
+          mes_competencia: currentMonth + 1, // 1 to 12
+          ano_competencia: currentYear,
+          criado_em: created_em
+        };
+
+        appState.installments.push(parcelaRecord);
+
+        currentMonth += 1;
+        if (currentMonth > 11) {
+          currentMonth = 0;
+          currentYear += 1;
+        }
+      }
+
+      if (shouldSync) {
+        syncToGoogleSheets();
+        renderAllViews();
+      }
+    }
+
+    function deleteExpenseRecord(expenseId) {
+      appState.expenses = appState.expenses.filter(e => e.id !== expenseId);
+      appState.installments = appState.installments.filter(p => p.despesa_id !== expenseId);
+      syncToGoogleSheets();
+      renderAllViews();
+    }
+
+    function setDefaultMonthPicker() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const val = `${y}-${m}`;
+
+      document.getElementById('dashFilterMesAno').value = val;
+      document.getElementById('extratoFilterMesAno').value = val;
+    }
+
+    function renderAllViews() {
+      populateFormDropdowns();
+      renderDashboard();
+      renderExtrato();
+      renderCadastros();
+    }
+
+    function toggleCartaoSelect() {
+      const forma = document.getElementById('inpFormaPagamento').value;
+      const boxCartao = document.getElementById('boxCartaoSelect');
+      const cartaoSelect = document.getElementById('inpCartao');
+      if (forma === 'CARD') {
+        boxCartao.classList.remove('hidden');
+        cartaoSelect.required = true;
+      } else {
+        boxCartao.classList.add('hidden');
+        cartaoSelect.required = false;
+      }
+      updateParcelaPreview();
+    }
+
+    function updateParcelaPreview() {
+      const inpValor = document.getElementById('inpValorTotal');
+      const inpParc = document.getElementById('inpParcelas');
+      const inpData = document.getElementById('inpDataCompra');
+      const inpForma = document.getElementById('inpFormaPagamento');
+      const inpCart = document.getElementById('inpCartao');
+
+      if (!inpValor || !inpParc || !inpData) return;
+
+      const valorTotal = parseFloat(inpValor.value) || 0;
+      const numParcelas = parseInt(inpParc.value, 10) || 1;
+      const dataCompra = inpData.value || new Date().toISOString().split('T')[0];
+      const formaPagamento = inpForma ? inpForma.value : 'CARD';
+      const cartaoId = inpCart ? inpCart.value : '';
+
+      const valorParcela = numParcelas > 0 ? (valorTotal / numParcelas) : 0;
+      const parcelaPreviewText = `${numParcelas}x de ${formatMoney(valorParcela)} (Total: ${formatMoney(valorTotal)})`;
+      
+      const txtPreview = document.getElementById('parcelaPreviewText');
+      if (txtPreview) txtPreview.innerText = parcelaPreviewText;
+
+      const txtComp = document.getElementById('parcelaCompetenciaText');
+      if (txtComp) {
+        if (dataCompra) {
+          const comp = calculateCompetency(dataCompra, formaPagamento, cartaoId);
+          const compLabel = getMonthLabel(comp.year, comp.month);
+          txtComp.innerText = `Entra na fatura/mês de ${compLabel}`;
+        } else {
+          txtComp.innerText = '';
+        }
+      }
+    }
+
+    function populateFormDropdowns() {
+      const selCat = document.getElementById('inpCategoria');
+      if (selCat) {
+        selCat.innerHTML = appState.categories
+          .filter(c => c.ativo === 'SIM' || c.ativo === true)
+          .map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      }
+
+      const selResp = document.getElementById('inpResponsavel');
+      const respOptions = appState.responsibles
+        .filter(r => r.ativo === 'SIM' || r.ativo === true)
+        .map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+      
+      if (selResp) selResp.innerHTML = respOptions;
+
+      const filterDashResp = document.getElementById('dashFilterResponsavel');
+      if (filterDashResp) filterDashResp.innerHTML = `<option value="ALL">Todos Responsáveis</option>` + respOptions;
+
+      const filterExtResp = document.getElementById('extratoFilterResponsavel');
+      if (filterExtResp) filterExtResp.innerHTML = `<option value="ALL">Todos Responsáveis</option>` + respOptions;
+
+      const selCartao = document.getElementById('inpCartao');
+      if (selCartao) {
+        selCartao.innerHTML = appState.cards
+          .filter(c => c.ativo === 'SIM' || c.ativo === true)
+          .map(c => `<option value="${c.id}">${c.nome} (Fecha dia ${c.dia_fechamento})</option>`).join('');
+      }
+
+      updateParcelaPreview();
+    }
+
+    function renderDashboard() {
+      const selectedResp = document.getElementById('dashFilterResponsavel').value;
+      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
+      if (!selectedMesAno) return;
+
+      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+
+      const activeInstallments = appState.installments.filter(p => {
+        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+        if (!matchMonth) return false;
+
+        if (selectedResp !== 'ALL') {
+          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+          return parentExp && parentExp.responsável === selectedResp;
+        }
+        return true;
+      });
+
+      let totalMes = 0;
+      let totalCartoes = 0;
+      let totalOutros = 0;
+
+      const cardTotalsMap = {};
+      appState.cards.forEach(c => { cardTotalsMap[c.id] = 0; });
+
+      activeInstallments.forEach(p => {
+        const val = parseFloat(p.valor_parcela) || 0;
+        totalMes += val;
+
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (parentExp) {
+          if (parentExp.forma_pagamento === 'CARD' && parentExp.cartão) {
+            totalCartoes += val;
+            if (cardTotalsMap[parentExp.cartão] !== undefined) {
+              cardTotalsMap[parentExp.cartão] += val;
+            } else {
+              cardTotalsMap[parentExp.cartão] = val;
+            }
+          } else {
+            totalOutros += val;
+          }
+        }
+      });
+
+      document.getElementById('dashTotalMes').innerText = formatMoney(totalMes);
+      document.getElementById('dashTotalCartoes').innerText = formatMoney(totalCartoes);
+      document.getElementById('dashTotalOutros').innerText = formatMoney(totalOutros);
+
+      const activeCardsWithInvoices = Object.values(cardTotalsMap).filter(v => v > 0).length;
+      document.getElementById('dashCartoesCount').innerText = `${activeCardsWithInvoices} cartão(ões) com fatura este mês`;
+
+      const cardsGrid = document.getElementById('dashCartoesGrid');
+      cardsGrid.innerHTML = '';
+
+      appState.cards.forEach(c => {
+        const cardSum = cardTotalsMap[c.id] || 0;
+        const cardElem = document.createElement('div');
+        cardElem.className = 'glass-card p-4 rounded-2xl hover:border-emerald-500/40 cursor-pointer transition-all flex flex-col justify-between';
+        cardElem.onclick = () => showDetailModal(`Fatura Cartão: ${c.nome}`, 'CARD_SPECIFIC', c.id);
+
+        cardElem.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-teal-400 font-bold text-xs border border-slate-700">
+                <i data-lucide="credit-card" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <span class="font-bold text-slate-100 text-xs">${c.nome}</span>
+                <p class="text-[10px] text-slate-400">Fecha dia ${c.dia_fechamento} | Vence dia ${c.dia_vencimento}</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline justify-between border-t border-slate-800/80 pt-2">
+            <span class="text-[11px] text-slate-400">Fatura do mês</span>
+            <span class="text-sm font-bold ${cardSum > 0 ? 'text-teal-300' : 'text-slate-500'}">${formatMoney(cardSum)}</span>
+          </div>
+        `;
+        cardsGrid.appendChild(cardElem);
+      });
+
+      renderFutureMonthsProjection(selYear, selMonth, selectedResp);
+      generateAIInsights();
+      lucide.createIcons();
+    }
+
+    function renderFutureMonthsProjection(startYear, startMonth, selectedResp) {
+      const container = document.getElementById('futureMonthsContainer');
+      container.innerHTML = '';
+
+      let curY = startYear;
+      let curM = startMonth;
+
+      for (let i = 0; i < 6; i++) {
+        const futInstallments = appState.installments.filter(p => {
+          const matchDate = (parseInt(p.ano_competencia, 10) === curY) && (parseInt(p.mes_competencia, 10) === curM);
+          if (!matchDate) return false;
+          if (selectedResp !== 'ALL') {
+            const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+            return parentExp && parentExp.responsável === selectedResp;
+          }
+          return true;
+        });
+
+        const futSum = futInstallments.reduce((sum, p) => sum + (parseFloat(p.valor_parcela) || 0), 0);
+        const label = getMonthLabel(curY, curM - 1);
+
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border text-center transition-all ${i === 0 ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`;
+        card.innerHTML = `
+          <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">${label}</span>
+          <span class="text-xs font-bold ${futSum > 0 ? 'text-emerald-400' : 'text-slate-500'} mt-1 block">${formatMoney(futSum)}</span>
+        `;
+        container.appendChild(card);
+
+        curM += 1;
+        if (curM > 12) {
+          curM = 1;
+          curY += 1;
+        }
+      }
+    }
+
+    function generateAIInsights() {
+      const box = document.getElementById('aiInsightBox');
+      if (!box) return;
+
+      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
+      if (!selectedMesAno) {
+        box.innerHTML = `<p class="text-slate-400">Selecione um mês para ver a análise.</p>`;
+        return;
+      }
+
+      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+      const activeInstallments = appState.installments.filter(p => {
+        return (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+      });
+
+      if (activeInstallments.length === 0) {
+        box.innerHTML = `<p class="text-slate-400">Sem despesas registradas para ${selectedMesAno}. Lançamentos adicionados aparecerão na análise automática.</p>`;
+        return;
+      }
+
+      let totalSum = 0;
+      const categoryTotals = {};
+      const cardTotals = {};
+      let installmentCount = 0;
+
+      activeInstallments.forEach(p => {
+        const val = parseFloat(p.valor_parcela) || 0;
+        totalSum += val;
+        if (p.total_parcelas > 1) installmentCount++;
+
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (parentExp) {
+          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+          const catName = catObj ? catObj.nome : 'Outros';
+          categoryTotals[catName] = (categoryTotals[catName] || 0) + val;
+
+          if (parentExp.forma_pagamento === 'CARD' && parentExp.cartão) {
+            const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
+            const cardName = cardObj ? cardObj.nome : 'Cartão';
+            cardTotals[cardName] = (cardTotals[cardName] || 0) + val;
+          }
+        }
+      });
+
+      let topCat = '-';
+      let topCatVal = 0;
+      Object.entries(categoryTotals).forEach(([cat, val]) => {
+        if (val > topCatVal) {
+          topCatVal = val;
+          topCat = cat;
+        }
+      });
+
+      let topCard = '-';
+      let topCardVal = 0;
+      Object.entries(cardTotals).forEach(([card, val]) => {
+        if (val > topCardVal) {
+          topCardVal = val;
+          topCard = card;
+        }
+      });
+
+      let futureSum = 0;
+      let curY = selYear;
+      let curM = selMonth + 1;
+      if (curM > 12) { curM = 1; curY += 1; }
+      
+      for (let i = 0; i < 3; i++) {
+        const futParcs = appState.installments.filter(p => (parseInt(p.ano_competencia, 10) === curY) && (parseInt(p.mes_competencia, 10) === curM));
+        futureSum += futParcs.reduce((acc, p) => acc + (parseFloat(p.valor_parcela) || 0), 0);
+        curM += 1;
+        if (curM > 12) { curM = 1; curY += 1; }
+      }
+
+      const topCatPct = totalSum > 0 ? Math.round((topCatVal / totalSum) * 100) : 0;
+
+      box.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Maior Categoria de Gasto</span>
+            <div class="font-bold text-slate-100 mt-0.5">${topCat} &bull; <span class="text-emerald-400">${formatMoney(topCatVal)}</span> (${topCatPct}%)</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Cartão com Maior Volume</span>
+            <div class="font-bold text-slate-100 mt-0.5">${topCardVal > 0 ? topCard : 'Nenhum'} &bull; <span class="text-teal-400">${formatMoney(topCardVal)}</span></div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Impacto de Compras Parceladas</span>
+            <div class="font-bold text-slate-100 mt-0.5">${installmentCount} parcela(s) ativa(s) neste mês</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+            <span class="text-slate-400 block text-[10px] uppercase font-semibold">Comprometimento Próximos 3 Meses</span>
+            <div class="font-bold text-emerald-400 mt-0.5">${formatMoney(futureSum)} em parcelas futuras</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showDetailModal(title, filterType, cardId = null) {
+      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
+      if (!selectedMesAno) return;
+      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+      const selectedResp = document.getElementById('dashFilterResponsavel').value;
+
+      document.getElementById('modalDetailsTitle').innerText = title;
+      document.getElementById('modalDetailsSubtitle').innerText = `Competência ${selectedMesAno}`;
+
+      const matchingInstallments = appState.installments.filter(p => {
+        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+        if (!matchMonth) return false;
+
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+
+        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
+
+        if (filterType === 'CARD') {
+          return parentExp.forma_pagamento === 'CARD';
+        } else if (filterType === 'OTHER') {
+          return parentExp.forma_pagamento !== 'CARD';
+        } else if (filterType === 'CARD_SPECIFIC') {
+          return parentExp.forma_pagamento === 'CARD' && parentExp.cartão === cardId;
+        }
+
+        return true;
+      });
+
+      const container = document.getElementById('modalDetailsList');
+      if (matchingInstallments.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhum gasto encontrado para esta seleção.</p>`;
+      } else {
+        container.innerHTML = matchingInstallments.map(p => {
+          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+          const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
+          const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
+
+          return `
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-100">${parentExp.estabelecimento}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-800 text-[10px] text-slate-300 border border-slate-700">${catObj ? catObj.nome : '-'}</span>
+                </div>
+                <p class="text-[11px] text-slate-400">
+                  Resp: <strong class="text-slate-300">${respObj ? respObj.nome : '-'}</strong> &bull; 
+                  ${parentExp.forma_pagamento === 'CARD' ? (cardObj ? cardObj.nome : 'Cartão') : 'Pix/Débito'} &bull;
+                  Parcela ${p.parcela_atual}/${p.total_parcelas}
+                </p>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-emerald-400 text-sm">${formatMoney(p.valor_parcela)}</span>
+                <p class="text-[10px] text-slate-500">${parentExp.data_compra}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      openModal('modalDetails');
+      lucide.createIcons();
+    }
+
+    function renderExtrato() {
+      const selectedResp = document.getElementById('extratoFilterResponsavel').value;
+      const selectedMesAno = document.getElementById('extratoFilterMesAno').value;
+      if (!selectedMesAno) return;
+
+      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+
+      const activeInstallments = appState.installments.filter(p => {
+        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+        if (!matchMonth) return false;
+
+        if (selectedResp !== 'ALL') {
+          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+          return parentExp && parentExp.responsável === selectedResp;
+        }
+        return true;
+      });
+
+      const respSummaryMap = {};
+      appState.responsibles.forEach(r => {
+        respSummaryMap[r.id] = {
+          nome: r.nome,
+          cardBreakdown: {},
+          totalOutros: 0,
+          totalGeral: 0
+        };
+      });
+
+      activeInstallments.forEach(p => {
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return;
+
+        const respId = parentExp.responsável;
+        if (!respSummaryMap[respId]) return;
+
+        const val = parseFloat(p.valor_parcela) || 0;
+        respSummaryMap[respId].totalGeral += val;
+
+        if (parentExp.forma_pagamento === 'CARD' && parentExp.cartão) {
+          const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
+          const cardName = cardObj ? cardObj.nome : 'Cartão';
+          respSummaryMap[respId].cardBreakdown[cardName] = (respSummaryMap[respId].cardBreakdown[cardName] || 0) + val;
+        } else {
+          respSummaryMap[respId].totalOutros += val;
+        }
+      });
+
+      const containerSummary = document.getElementById('extratoCardsSummary');
+      containerSummary.innerHTML = '';
+
+      Object.keys(respSummaryMap).forEach(respId => {
+        if (selectedResp !== 'ALL' && selectedResp !== respId) return;
+
+        const rData = respSummaryMap[respId];
+        const cardDetails = Object.keys(rData.cardBreakdown).map(cName => {
+          return `${cName}: <span class="font-bold text-teal-300">${formatMoney(rData.cardBreakdown[cName])}</span>`;
+        });
+
+        if (rData.totalOutros > 0) {
+          cardDetails.push(`Fora do Cartão: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
+        }
+
+        const summaryCard = document.createElement('div');
+        summaryCard.className = 'glass-card p-4 rounded-2xl space-y-2 border-l-4 border-l-emerald-500';
+        summaryCard.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold text-slate-100 text-sm flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4 text-emerald-400"></i>
+              ${rData.nome}
+            </span>
+            <span class="text-sm font-extrabold text-emerald-400">${formatMoney(rData.totalGeral)}</span>
+          </div>
+          <div class="text-xs text-slate-300 space-y-1">
+            <p>${cardDetails.length > 0 ? cardDetails.join(' &bull; ') : '<span class="text-slate-500">Nenhuma despesa neste mês</span>'}</p>
+          </div>
+        `;
+        containerSummary.appendChild(summaryCard);
+      });
+
+      const tbody = document.getElementById('extratoTableBody');
+      tbody.innerHTML = '';
+      document.getElementById('extratoItemCount').innerText = `${activeInstallments.length} item(ns)`;
+
+      activeInstallments.forEach(p => {
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return;
+
+        const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+        const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
+        const cardObj = appState.cards.find(c => c.id === parentExp.cartão);
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/50 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-slate-100">${parentExp.estabelecimento}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] text-slate-300">${catObj ? catObj.nome : '-'}</span></td>
+          <td class="p-3 text-slate-300">${parentExp.forma_pagamento === 'CARD' ? (cardObj ? cardObj.nome : 'Cartão') : 'Pix/Débito'}</td>
+          <td class="p-3 text-slate-300">${respObj ? respObj.nome : '-'}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-400 font-mono text-[11px]">${p.parcela_atual}/${p.total_parcelas}</span></td>
+          <td class="p-3 text-right font-bold text-slate-100">${formatMoney(p.valor_parcela)}</td>
+          <td class="p-3 text-center">
+            <button onclick="confirmDeleteExpense('${parentExp.id}')" title="Excluir despesa e parcelas" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto p-3.5 rounded-xl text-xs font-medium border shadow-xl transition-all duration-300 transform translate-y-2 opacity-0 flex items-center gap-2.5 ${
+        type === 'error' ? 'bg-rose-950/90 text-rose-200 border-rose-800' :
+        type === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800' :
+        'bg-slate-900/95 text-slate-100 border-slate-700'
+      }`;
+
+      const iconName = type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info';
+      toast.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 shrink-0"></i><span>${message}</span>`;
+
+      container.appendChild(toast);
+      lucide.createIcons({ targets: [toast] });
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    let confirmResolver = null;
+    function showConfirmModal(title, message) {
+      return new Promise((resolve) => {
+        confirmResolver = resolve;
+        document.getElementById('confirmModalTitle').innerText = title;
+        document.getElementById('confirmModalMessage').innerText = message;
+        
+        const btn = document.getElementById('btnConfirmModalAction');
+        btn.onclick = () => {
+          closeConfirmModal(true);
+        };
+        
+        openModal('modalConfirm');
+      });
+    }
+
+    function closeConfirmModal(result) {
+      closeModal('modalConfirm');
+      if (confirmResolver) {
+        confirmResolver(result);
+        confirmResolver = null;
+      }
+    }
+
+    function handleSaveExpense(e) {
+      e.preventDefault();
+
+      const data = {
+        estabelecimento: document.getElementById('inpEstabelecimento').value.trim(),
+        categoria: document.getElementById('inpCategoria').value,
+        responsável: document.getElementById('inpResponsavel').value,
+        forma_pagamento: document.getElementById('inpFormaPagamento').value,
+        cartão: document.getElementById('inpCartao').value,
+        valor_total: document.getElementById('inpValorTotal').value,
+        parcelas: document.getElementById('inpParcelas').value,
+        data_compra: document.getElementById('inpDataCompra').value
+      };
+
+      addExpenseRecord(data, true);
+
+      document.getElementById('formDespesa').reset();
+      document.getElementById('inpDataCompra').value = new Date().toISOString().split('T')[0];
+      toggleCartaoSelect();
+
+      showToast("Despesa cadastrada com sucesso e parcelas geradas!", "success");
+      switchTab('tabDashboard');
+    }
+
+    async function confirmDeleteExpense(expenseId) {
+      const confirmed = await showConfirmModal("Excluir Despesa", "Tem certeza que deseja excluir esta despesa? Todas as parcelas vinculadas serão removidas.");
+      if (confirmed) {
+        deleteExpenseRecord(expenseId);
+        showToast("Despesa removida com sucesso.", "info");
+      }
+    }
+
+    function switchCadastroSubTab(subTabId) {
+      appState.activeCadastroSubTab = subTabId;
+
+      document.getElementById('subTabCartoes').classList.add('hidden');
+      document.getElementById('subTabResponsaveis').classList.add('hidden');
+      document.getElementById('subTabCategorias').classList.add('hidden');
+
+      document.getElementById('btnCadCartoes').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+      document.getElementById('btnCadResponsaveis').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+      document.getElementById('btnCadCategorias').className = 'pb-3 border-b-2 border-transparent font-medium text-slate-400 hover:text-slate-200';
+
+      if (subTabId === 'cadCartoes') {
+        document.getElementById('subTabCartoes').classList.remove('hidden');
+        document.getElementById('btnCadCartoes').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+      } else if (subTabId === 'cadResponsaveis') {
+        document.getElementById('subTabResponsaveis').classList.remove('hidden');
+        document.getElementById('btnCadResponsaveis').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+      } else if (subTabId === 'cadCategorias') {
+        document.getElementById('subTabCategorias').classList.remove('hidden');
+        document.getElementById('btnCadCategorias').className = 'pb-3 border-b-2 border-emerald-500 font-semibold text-emerald-400';
+      }
+    }
+
+    function renderCadastros() {
+      const listC = document.getElementById('listCartoes');
+      listC.innerHTML = appState.cards.map(c => `
+        <div class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+          <div>
+            <span class="font-bold text-slate-100">${c.nome}</span>
+            <p class="text-[11px] text-slate-400">Fecha dia ${c.dia_fechamento} &bull; Vence dia ${c.dia_vencimento}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editCartao('${c.id}')" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+            <button onclick="deleteCartao('${c.id}')" class="p-1.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+        </div>
+      `).join('');
+
+      const listR = document.getElementById('listResponsaveis');
+      listR.innerHTML = appState.responsibles.map(r => `
+        <div class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+          <span class="font-bold text-slate-100">${r.nome}</span>
+          <button onclick="deleteResponsavel('${r.id}')" class="p-1.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        </div>
+      `).join('');
+
+      const listCat = document.getElementById('listCategorias');
+      listCat.innerHTML = appState.categories.map(cat => `
+        <div class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+          <span class="font-bold text-slate-100">${cat.nome}</span>
+          <button onclick="deleteCategoria('${cat.id}')" class="p-1.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function handleSaveCartao(e) {
+      e.preventDefault();
+      const id = document.getElementById('cadCartaoId').value || 'c_' + Date.now();
+      const nome = document.getElementById('cadCartaoNome').value.trim();
+      const dia_fechamento = parseInt(document.getElementById('cadCartaoFechamento').value, 10);
+      const dia_vencimento = parseInt(document.getElementById('cadCartaoVencimento').value, 10);
+
+      const existingIdx = appState.cards.findIndex(c => c.id === id);
+      const obj = { id, nome, dia_fechamento, dia_vencimento, ativo: 'SIM' };
+
+      if (existingIdx >= 0) {
+        appState.cards[existingIdx] = obj;
+      } else {
+        appState.cards.push(obj);
+      }
+
+      resetCartaoForm();
+      syncToGoogleSheets();
+      renderAllViews();
+    }
+
+    function editCartao(id) {
+      const card = appState.cards.find(c => c.id === id);
+      if (!card) return;
+      document.getElementById('cadCartaoId').value = card.id;
+      document.getElementById('cadCartaoNome').value = card.nome;
+      document.getElementById('cadCartaoFechamento').value = card.dia_fechamento;
+      document.getElementById('cadCartaoVencimento').value = card.dia_vencimento;
+      document.getElementById('cartaoFormTitle').innerText = 'Editar Cartão';
+    }
+
+    function resetCartaoForm() {
+      document.getElementById('cadCartaoId').value = '';
+      document.getElementById('cadCartaoNome').value = '';
+      document.getElementById('cadCartaoFechamento').value = '';
+      document.getElementById('cadCartaoVencimento').value = '';
+      document.getElementById('cartaoFormTitle').innerText = 'Novo Cartão';
+    }
+
+    async function deleteCartao(id) {
+      const confirmed = await showConfirmModal("Excluir Cartão", "Deseja excluir este cartão de crédito?");
+      if (confirmed) {
+        appState.cards = appState.cards.filter(c => c.id !== id);
+        syncToGoogleSheets();
+        renderAllViews();
+        showToast("Cartão removido.", "info");
+      }
+    }
+
+    function handleSaveResponsavel(e) {
+      e.preventDefault();
+      const nome = document.getElementById('cadRespNome').value.trim();
+      const newResp = { id: 'r_' + Date.now(), nome, ativo: 'SIM' };
+      appState.responsibles.push(newResp);
+      document.getElementById('cadRespNome').value = '';
+      syncToGoogleSheets();
+      renderAllViews();
+      showToast("Responsável adicionado.", "success");
+    }
+
+    async function deleteResponsavel(id) {
+      const confirmed = await showConfirmModal("Excluir Responsável", "Deseja remover este responsável?");
+      if (confirmed) {
+        appState.responsibles = appState.responsibles.filter(r => r.id !== id);
+        syncToGoogleSheets();
+        renderAllViews();
+        showToast("Responsável removido.", "info");
+      }
+    }
+
+    function handleSaveCategoria(e) {
+      e.preventDefault();
+      const nome = document.getElementById('cadCatNome').value.trim();
+      const newCat = { id: 'cat_' + Date.now(), nome, ativo: 'SIM' };
+      appState.categories.push(newCat);
+      document.getElementById('cadCatNome').value = '';
+      syncToGoogleSheets();
+      renderAllViews();
+      showToast("Categoria adicionada.", "success");
+    }
+
+    async function deleteCategoria(id) {
+      const confirmed = await showConfirmModal("Excluir Categoria", "Deseja remover esta categoria?");
+      if (confirmed) {
+        appState.categories = appState.categories.filter(c => c.id !== id);
+        syncToGoogleSheets();
+        renderAllViews();
+        showToast("Categoria removida.", "info");
+      }
+    }
+
+    function switchTab(tabId) {
+      appState.activeTab = tabId;
+
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      const deskTabs = ['Dashboard', 'Lancar', 'Extrato', 'Cadastros'];
+      deskTabs.forEach(t => {
+        const btn = document.getElementById(`deskNavTab${t}`);
+        if (`tab${t}` === tabId) {
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white flex items-center gap-2';
+        } else {
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2';
+        }
+      });
+
+      deskTabs.forEach(t => {
+        const btn = document.getElementById(`navTab${t}`);
+        if (`tab${t}` === tabId) {
+          btn.className = 'flex flex-col items-center py-1.5 px-2 text-emerald-400 font-medium';
+        } else {
+          btn.className = 'flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200';
+        }
+      });
+
+      if (tabId === 'tabLancar') {
+        document.getElementById('inpDataCompra').value = new Date().toISOString().split('T')[0];
+        toggleCartaoSelect();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.remove('hidden');
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function openSyncModal() {
+      document.getElementById('inpWebAppUrl').value = appState.webAppUrl;
+      openModal('modalSync');
+    }
+
+    function saveSyncSettings() {
+      const rawUrl = document.getElementById('inpWebAppUrl').value.trim();
+      const normalized = normalizeWebAppUrl(rawUrl);
+      appState.webAppUrl = normalized;
+      localStorage.setItem('fincontrol_sheet_url', normalized);
+      closeModal('modalSync');
+      if (normalized) {
+        fetchFromGoogleSheets();
+      } else {
+        updateSyncBadge('OFFLINE (Local)');
+      }
+    }
+
+    function copyAppsScriptCode() {
+      const code = document.getElementById('codeAppsScript').innerText;
+      const textArea = document.createElement('textarea');
+      textArea.value = code;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+
+      let success = false;
+      try {
+        success = document.execCommand('copy');
+      } catch (err) {
+        console.error("Clipboard execCommand error:", err);
+      }
+      document.body.removeChild(textArea);
+
+      if (success) {
+        showToast("Código Apps Script copiado para a área de transferência!", "success");
+      } else {
+        showToast("Selecione o texto e pressione Ctrl+C para copiar.", "info");
+      }
+    }
+
+    function formatMoney(val) {
+      return (parseFloat(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+  </script>
+</body>
+</html>
