@@ -38,7 +38,7 @@
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <!-- html2canvas CDN (Para gerar a imagem) -->
+  <!-- html2canvas CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
@@ -110,25 +110,25 @@
   </header>
 
   <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-40 md:pb-28 space-y-6">
-
     <!-- TAB 1: DASHBOARD -->
     <section id="tabDashboard" class="tab-content space-y-6">
       
-      <!-- Filters Row Dashboard -->
+      <!-- Filters Row Dashboard com o Novo Filtro por Cartão -->
       <div class="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div class="flex items-center gap-2">
           <i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i>
           <span class="text-sm font-semibold text-slate-200">Filtros</span>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <div>
-            <select id="dashFilterResponsavel" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-              <option value="ALL">Todos Responsáveis</option>
-            </select>
-          </div>
-          <div>
-            <input type="month" id="dashFilterMesAno" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:flex sm:items-center w-full sm:w-auto">
+          <select id="dashFilterResponsavel" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <option value="ALL">Todos Responsáveis</option>
+          </select>
+          <select id="dashFilterCartao" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <option value="ALL">Todos Cartões/Formas</option>
+            <option value="OTHER">Fora do Cartão (Pix/Dinheiro)</option>
+            <!-- Rendered dynamically via JS -->
+          </select>
+          <input type="month" id="dashFilterMesAno" onchange="renderDashboard()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
         </div>
       </div>
 
@@ -194,9 +194,19 @@
         </div>
         <div class="overflow-x-auto custom-scrollbar">
           <table class="w-full text-left text-xs">
+            <thead class="text-slate-400 border-b border-slate-800/60 pb-2">
+              <tr>
+                <th class="p-2.5 font-medium">Categoria</th>
+                <th class="p-2.5 font-medium text-right">%</th>
+                <th class="p-2.5 font-medium text-right">Valor</th>
+              </tr>
+            </thead>
             <tbody id="dashCategoryTable" class="divide-y divide-slate-800/60 text-slate-200">
               <!-- Rendered dynamically -->
             </tbody>
+            <tfoot id="dashCategoryTableFoot" class="border-t border-slate-800 text-slate-100 font-bold hidden">
+                <!-- Rendered dynamically -->
+            </tfoot>
           </table>
         </div>
       </div>
@@ -359,15 +369,12 @@
         </div>
       </div>
 
-      <!-- Wrapper para a área que será exportada como imagem -->
       <div id="extratoExportArea" class="space-y-6">
         
-        <!-- Summary Cards per Responsible -->
         <div id="extratoCardsSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Rendered dynamically -->
         </div>
 
-        <!-- Table / Detailed List -->
         <div class="glass-card rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-slate-800 flex items-center justify-between gap-3">
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Despesas Detalhadas no Período</h3>
@@ -968,6 +975,12 @@
           .map(c => `<option value="${c.id}">${c.nome} (Fecha dia ${c.dia_fechamento})</option>`).join('');
       }
 
+      const filterDashCartao = document.getElementById('dashFilterCartao');
+      if (filterDashCartao) {
+        filterDashCartao.innerHTML = `<option value="ALL">Todos Cartões/Formas</option>
+          <option value="OTHER">Fora do Cartão (Pix/Dinheiro)</option>` + cardOptions;
+      }
+
       const filterExtCartao = document.getElementById('extratoFilterCartao');
       if (filterExtCartao) {
         filterExtCartao.innerHTML = `<option value="ALL">Todos Cartões/Formas</option>
@@ -979,6 +992,7 @@
 
     function renderDashboard() {
       const selectedResp = document.getElementById('dashFilterResponsavel').value;
+      const selectedCartao = document.getElementById('dashFilterCartao') ? document.getElementById('dashFilterCartao').value : 'ALL';
       const selectedMesAno = document.getElementById('dashFilterMesAno').value;
       if (!selectedMesAno) return;
 
@@ -988,10 +1002,22 @@
         const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
         if (!matchMonth) return false;
 
-        if (selectedResp !== 'ALL') {
-          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-          return parentExp && parentExp.responsável === selectedResp;
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+
+        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) {
+          return false;
         }
+
+        // NOVO: Filtrar pelo cartão selecionado
+        if (selectedCartao !== 'ALL') {
+          if (selectedCartao === 'OTHER') {
+            if (parentExp.forma_pagamento === 'CARD') return false;
+          } else {
+            if (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao) return false;
+          }
+        }
+
         return true;
       });
 
@@ -1040,8 +1066,10 @@
       cardsGrid.innerHTML = '';
       appState.cards.forEach(c => {
         const cardSum = cardTotalsMap[c.id] || 0;
+        // Se temos um filtro de cartão específico ativo, exibir apenas o cartão ativo caso tenha sido filtrado, 
+        // ou exibir todos para contexto? Para visual limpo, vamos exibir todos que tiveram uso
         const cardElem = document.createElement('div');
-        cardElem.className = 'glass-card p-4 rounded-2xl hover:border-emerald-500/40 cursor-pointer transition-all flex flex-col justify-between';
+        cardElem.className = `glass-card p-4 rounded-2xl cursor-pointer transition-all flex flex-col justify-between hover:border-emerald-500/40 ${selectedCartao !== 'ALL' && selectedCartao !== c.id && selectedCartao !== 'OTHER' ? 'opacity-30' : ''}`;
         cardElem.onclick = () => showDetailModal(`Fatura Cartão: ${c.nome}`, 'CARD_SPECIFIC', c.id);
 
         cardElem.innerHTML = `
@@ -1067,25 +1095,42 @@
       // Render Categories Table
       const sortedCats = Object.entries(catTotalsMap).sort((a,b) => b[1] - a[1]);
       const tbodyCat = document.getElementById('dashCategoryTable');
+      const tfootCat = document.getElementById('dashCategoryTableFoot');
+      
       if (tbodyCat) {
           if (sortedCats.length > 0) {
-            tbodyCat.innerHTML = sortedCats.map(([cat, val]) => `
+            tbodyCat.innerHTML = sortedCats.map(([cat, val]) => {
+              const perc = totalMes > 0 ? ((val / totalMes) * 100).toFixed(1) : 0;
+              return `
               <tr class="hover:bg-slate-900/50 transition-colors">
                 <td class="p-2.5 font-medium text-slate-300">${cat}</td>
+                <td class="p-2.5 text-right text-slate-400 text-[11px]">${perc}%</td>
                 <td class="p-2.5 text-right font-bold text-slate-100">${formatMoney(val)}</td>
               </tr>
-            `).join('');
+            `}).join('');
+            
+            if (tfootCat) {
+                tfootCat.classList.remove('hidden');
+                tfootCat.innerHTML = `
+                  <tr class="bg-slate-900/40">
+                    <td class="p-2.5 font-bold uppercase tracking-wider text-[11px]">Total Geral</td>
+                    <td class="p-2.5 text-right text-slate-400 text-[11px]">100%</td>
+                    <td class="p-2.5 text-right font-bold text-emerald-400">${formatMoney(totalMes)}</td>
+                  </tr>
+                `;
+            }
           } else {
-            tbodyCat.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-500 text-xs">Nenhum gasto neste período.</td></tr>`;
+            tbodyCat.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500 text-xs">Nenhum gasto neste período.</td></tr>`;
+            if (tfootCat) tfootCat.classList.add('hidden');
           }
       }
 
-      renderFutureMonthsProjection(selYear, selMonth, selectedResp);
+      renderFutureMonthsProjection(selYear, selMonth, selectedResp, selectedCartao);
       generateAIInsights();
       lucide.createIcons();
     }
 
-    function renderFutureMonthsProjection(startYear, startMonth, selectedResp) {
+    function renderFutureMonthsProjection(startYear, startMonth, selectedResp, selectedCartao) {
       const container = document.getElementById('futureMonthsContainer');
       if(!container) return;
       container.innerHTML = '';
@@ -1096,10 +1141,20 @@
         const futInstallments = appState.installments.filter(p => {
           const matchDate = (parseInt(p.ano_competencia, 10) === curY) && (parseInt(p.mes_competencia, 10) === curM);
           if (!matchDate) return false;
-          if (selectedResp !== 'ALL') {
-            const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-            return parentExp && parentExp.responsável === selectedResp;
+          
+          const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+          if (!parentExp) return false;
+
+          if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
+
+          if (selectedCartao !== 'ALL') {
+            if (selectedCartao === 'OTHER') {
+              if (parentExp.forma_pagamento === 'CARD') return false;
+            } else {
+              if (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao) return false;
+            }
           }
+
           return true;
         });
 
@@ -1130,11 +1185,34 @@
       const selectedMesAno = dashMesAno ? dashMesAno.value : null;
       if (!selectedMesAno) return;
 
+      const dashResp = document.getElementById('dashFilterResponsavel');
+      const selectedResp = dashResp ? dashResp.value : 'ALL';
+      const dashCartao = document.getElementById('dashFilterCartao');
+      const selectedCartao = dashCartao ? dashCartao.value : 'ALL';
+
       const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
-      const activeInstallments = appState.installments.filter(p => (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth));
+      
+      const activeInstallments = appState.installments.filter(p => {
+        const matchMonth = (parseInt(p.ano_competencia, 10) === selYear) && (parseInt(p.mes_competencia, 10) === selMonth);
+        if (!matchMonth) return false;
+
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+
+        if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
+
+        if (selectedCartao !== 'ALL') {
+          if (selectedCartao === 'OTHER') {
+            if (parentExp.forma_pagamento === 'CARD') return false;
+          } else {
+            if (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao) return false;
+          }
+        }
+        return true;
+      });
 
       if (activeInstallments.length === 0) {
-        box.innerHTML = `<p class="text-slate-400">Sem despesas registradas para ${selectedMesAno}.</p>`;
+        box.innerHTML = `<p class="text-slate-400">Sem despesas registradas nos filtros atuais.</p>`;
         return;
       }
 
@@ -1174,7 +1252,23 @@
       if (curM > 12) { curM = 1; curY += 1; }
       
       for (let i = 0; i < 3; i++) {
-        const futParcs = appState.installments.filter(p => (parseInt(p.ano_competencia, 10) === curY) && (parseInt(p.mes_competencia, 10) === curM));
+        const futParcs = appState.installments.filter(p => {
+            const matchDate = (parseInt(p.ano_competencia, 10) === curY) && (parseInt(p.mes_competencia, 10) === curM);
+            if(!matchDate) return false;
+            
+            const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+            if (!parentExp) return false;
+            if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
+
+            if (selectedCartao !== 'ALL') {
+              if (selectedCartao === 'OTHER') {
+                if (parentExp.forma_pagamento === 'CARD') return false;
+              } else {
+                if (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao) return false;
+              }
+            }
+            return true;
+        });
         futureSum += futParcs.reduce((acc, p) => acc + (parseFloat(p.valor_parcela) || 0), 0);
         curM += 1;
         if (curM > 12) { curM = 1; curY += 1; }
@@ -1190,7 +1284,7 @@
           </div>
           <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
             <span class="text-slate-400 block text-[10px] uppercase font-semibold">Cartão com Maior Volume</span>
-            <div class="font-bold text-slate-100 mt-0.5">${topCardVal > 0 ? topCard : 'Nenhum'} &bull; <span class="text-teal-400">${formatMoney(topCardVal)}</span></div>
+            <div class="font-bold text-slate-100 mt-0.5">${topCardVal > 0 ? topCard : 'Nenhum/Filtrado'} &bull; <span class="text-teal-400">${formatMoney(topCardVal)}</span></div>
           </div>
           <div class="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
             <span class="text-slate-400 block text-[10px] uppercase font-semibold">Impacto de Compras Parceladas</span>
@@ -1476,8 +1570,12 @@
       const selectedMesAno = dashMesAno ? dashMesAno.value : '';
       if (!selectedMesAno) return;
       const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
+      
       const dashResp = document.getElementById('dashFilterResponsavel');
       const selectedResp = dashResp ? dashResp.value : 'ALL';
+      
+      const dashCartao = document.getElementById('dashFilterCartao');
+      const selectedCartao = dashCartao ? dashCartao.value : 'ALL';
 
       document.getElementById('modalDetailsTitle').innerText = title;
       document.getElementById('modalDetailsSubtitle').innerText = `Competência ${selectedMesAno}`;
@@ -1488,8 +1586,16 @@
 
         const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
         if (!parentExp) return false;
+        
         if (selectedResp !== 'ALL' && parentExp.responsável !== selectedResp) return false;
 
+        // Apply general dashboard card filter
+        if (selectedCartao !== 'ALL') {
+          if (selectedCartao === 'OTHER' && parentExp.forma_pagamento === 'CARD') return false;
+          if (selectedCartao !== 'OTHER' && (parentExp.forma_pagamento !== 'CARD' || parentExp.cartão !== selectedCartao)) return false;
+        }
+
+        // Apply specific modal click filter
         if (filterType === 'CARD') return parentExp.forma_pagamento === 'CARD';
         else if (filterType === 'OTHER') return parentExp.forma_pagamento !== 'CARD';
         else if (filterType === 'CARD_SPECIFIC') return parentExp.forma_pagamento === 'CARD' && parentExp.cartão === cardId;
