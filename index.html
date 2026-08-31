@@ -113,7 +113,7 @@
     <section id="tabDashboard" class="tab-content space-y-6">
       
       <!-- Filters Row Dashboard com Multi-Selects -->
-      <div class="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
+      <div class="relative z-50 glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
         <div class="flex items-center gap-2">
           <i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i>
           <span class="text-sm font-semibold text-slate-200">Filtros</span>
@@ -353,7 +353,7 @@
 
     <!-- TAB 3: EXTRATO POR RESPONSÁVEL -->
     <section id="tabExtrato" class="tab-content hidden space-y-6">
-      <div class="glass-card p-5 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
+      <div class="relative z-50 glass-card p-5 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
         <div>
           <h2 class="text-base font-bold text-white flex items-center gap-2">
             <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i>
@@ -860,29 +860,48 @@
       const container = document.getElementById(dropdownId);
       if (!container) return;
       
+      // Preservar a seleção atual se o dropdown já existir
+      const currentSelected = getSelectedValues(dropdownId);
+      const hasSelection = currentSelected.length > 0;
+      const isAll = hasSelection ? currentSelected.includes('ALL') : true;
+      
       let html = `
         <label class="flex items-center gap-2 p-2 hover:bg-slate-700 rounded cursor-pointer text-xs transition-colors group">
-          <input type="checkbox" value="ALL" checked onchange="handleMSChange('${dropdownId}', '${labelId}', '${defaultText}')" class="rounded border-slate-600 bg-slate-900 focus:ring-emerald-500 cursor-pointer w-4 h-4 text-emerald-500 focus:ring-offset-slate-800">
+          <input type="checkbox" value="ALL" ${isAll ? 'checked' : ''} onchange="handleMSChange(event, '${dropdownId}', '${labelId}', '${defaultText}')" class="rounded border-slate-600 bg-slate-900 focus:ring-emerald-500 cursor-pointer w-4 h-4 text-emerald-500 focus:ring-offset-slate-800">
           <span class="text-slate-200 font-medium group-hover:text-white">${defaultText}</span>
         </label>
       `;
 
       optionsList.forEach(opt => {
+        const isChecked = !isAll && currentSelected.includes(opt.value);
         html += `
           <label class="flex items-center gap-2 p-2 hover:bg-slate-700 rounded cursor-pointer text-xs transition-colors group">
-            <input type="checkbox" value="${opt.value}" onchange="handleMSChange('${dropdownId}', '${labelId}', '${defaultText}')" class="rounded border-slate-600 bg-slate-900 focus:ring-emerald-500 cursor-pointer w-4 h-4 text-emerald-500 focus:ring-offset-slate-800">
+            <input type="checkbox" value="${opt.value}" ${isChecked ? 'checked' : ''} onchange="handleMSChange(event, '${dropdownId}', '${labelId}', '${defaultText}')" class="rounded border-slate-600 bg-slate-900 focus:ring-emerald-500 cursor-pointer w-4 h-4 text-emerald-500 focus:ring-offset-slate-800">
             <span class="text-slate-300 group-hover:text-white">${opt.label}</span>
           </label>
         `;
       });
       container.innerHTML = html;
+
+      // Atualiza a label principal para refletir a memória da seleção
+      const label = document.getElementById(labelId);
+      if (label) {
+        if (isAll) {
+          label.innerText = defaultText;
+        } else if (currentSelected.length === 1 && currentSelected[0] !== 'ALL') {
+          const selectedOpt = optionsList.find(o => o.value === currentSelected[0]);
+          if (selectedOpt) label.innerText = selectedOpt.label;
+        } else {
+          label.innerText = `${currentSelected.length} selecionados`;
+        }
+      }
     }
 
-    function handleMSChange(dropdownId, labelId, defaultText) {
+    function handleMSChange(e, dropdownId, labelId, defaultText) {
       const container = document.getElementById(dropdownId);
-      const clicked = event.target;
+      const clicked = e.target;
       const allCb = container.querySelector('input[value="ALL"]');
-      const otherCbs = Array.from(container.querySelectorAll('input[value!="ALL"]'));
+      const otherCbs = Array.from(container.querySelectorAll('input:not([value="ALL"])'));
 
       if (clicked.value === 'ALL' && clicked.checked) {
         otherCbs.forEach(cb => cb.checked = false);
@@ -913,7 +932,7 @@
       if(!container) return ['ALL'];
       const allCb = container.querySelector('input[value="ALL"]');
       if (allCb && allCb.checked) return ['ALL'];
-      return Array.from(container.querySelectorAll('input[value!="ALL"]:checked')).map(cb => cb.value);
+      return Array.from(container.querySelectorAll('input:not([value="ALL"]):checked')).map(cb => cb.value);
     }
 
     function populateFormDropdowns() {
