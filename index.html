@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FinControl - Google Sheets Sync</title>
+  <title>FinControl - Google Sheets Sync & Analytics</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -35,6 +35,7 @@
   
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
@@ -42,8 +43,8 @@
       -webkit-tap-highlight-color: transparent;
     }
     .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
       background: rgba(15, 23, 42, 0.6);
@@ -60,6 +61,12 @@
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
+    .pbi-card {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
     .modal-backdrop {
       background: rgba(2, 6, 23, 0.8);
       backdrop-filter: blur(6px);
@@ -71,7 +78,6 @@
     .glow-effect {
       animation: pulseGlow 3s infinite;
     }
-    /* Estilos para o Checkbox do Tailwind ser visivel nos multi-selects */
     input[type="checkbox"] {
       accent-color: #10b981;
     }
@@ -80,7 +86,7 @@
 <body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden antialiased">
 
   <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
-    <div class="max-w-5xl mx-auto flex items-center justify-between">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
           <i data-lucide="wallet" class="w-5 h-5"></i>
@@ -108,11 +114,12 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-40 md:pb-28 space-y-6">
+  <main class="flex-1 max-w-6xl w-full mx-auto p-3 md:p-5 pb-40 md:pb-28 space-y-5">
+    
     <!-- TAB 1: DASHBOARD -->
     <section id="tabDashboard" class="tab-content space-y-6">
       
-      <!-- Filters Row Dashboard com Multi-Selects -->
+      <!-- Filters Row Dashboard -->
       <div class="relative z-50 glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
         <div class="flex items-center gap-2">
           <i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i>
@@ -127,7 +134,6 @@
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
             <div id="ms-dash-resp" class="ms-dropdown hidden absolute z-[60] left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
-              <!-- Injetado via JS -->
             </div>
           </div>
 
@@ -138,7 +144,6 @@
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
             <div id="ms-dash-cartao" class="ms-dropdown hidden absolute z-[60] left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
-              <!-- Injetado via JS -->
             </div>
           </div>
 
@@ -194,31 +199,20 @@
           Detalhamento por Cartão no Mês
         </h3>
         <div id="dashCartoesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <!-- Rendered dynamically -->
         </div>
       </div>
 
       <!-- Gastos por Categoria -->
       <div class="glass-card p-5 rounded-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i> Gastos por Categoria
-          </h3>
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-400"></i>
+            <h3 class="text-sm font-semibold text-slate-200">Gastos por Categoria</h3>
+          </div>
+          <span class="text-[11px] text-slate-400">Clique na categoria para detalhar</span>
         </div>
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left text-xs">
-            <thead class="text-slate-400 border-b border-slate-800/60 pb-2">
-              <tr>
-                <th class="p-2.5 font-medium">Categoria</th>
-                <th class="p-2.5 font-medium text-right">%</th>
-                <th class="p-2.5 font-medium text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody id="dashCategoryTable" class="divide-y divide-slate-800/60 text-slate-200">
-            </tbody>
-            <tfoot id="dashCategoryTableFoot" class="border-t border-slate-800 text-slate-100 font-bold hidden">
-            </tfoot>
-          </table>
+        
+        <div id="dashCategoryVisualContainer" class="space-y-3 pt-1">
         </div>
       </div>
 
@@ -256,13 +250,12 @@
           <span class="text-[11px] text-slate-400">Próximos 6 meses</span>
         </div>
         <div id="futureMonthsContainer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          <!-- Rendered dynamically -->
         </div>
       </div>
 
     </section>
 
-    <!-- TAB 2: LANÇAR DESPESA (FORM TAB) -->
+    <!-- TAB 2: LANÇAR DESPESA -->
     <section id="tabLancar" class="tab-content hidden max-w-2xl mx-auto">
       <div class="glass-card p-6 rounded-3xl space-y-6">
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
@@ -272,7 +265,7 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-white">Lançar / Editar Despesa</h2>
-              <p class="text-xs text-slate-400">Cálculo automático de fatura e parcelamento</p>
+              <p class="text-xs text-slate-400">Cálculo automático de valor total e faturas</p>
             </div>
           </div>
         </div>
@@ -286,7 +279,7 @@
               <input type="text" id="inpEstabelecimento" required placeholder="Ex: Supermercado, Amazon" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Valor Total (R$) *</label>
+              <label id="lblValorInput" class="block text-xs font-semibold text-slate-300 mb-1.5">Valor Total (R$) *</label>
               <input type="number" step="0.01" min="0.01" id="inpValorTotal" required placeholder="0,00" oninput="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
             </div>
           </div>
@@ -295,13 +288,11 @@
             <div>
               <label class="block text-xs font-semibold text-slate-300 mb-1.5">Categoria *</label>
               <select id="inpCategoria" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <!-- Options -->
               </select>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-300 mb-1.5">Responsável *</label>
               <select id="inpResponsavel" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <!-- Options -->
               </select>
             </div>
           </div>
@@ -317,7 +308,6 @@
             <div id="boxCartaoSelect">
               <label class="block text-xs font-semibold text-slate-300 mb-1.5">Cartão *</label>
               <select id="inpCartao" onchange="updateParcelaPreview()" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <!-- Options -->
               </select>
             </div>
           </div>
@@ -333,12 +323,12 @@
             </div>
           </div>
 
-          <div id="parcelaPreviewBox" class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+          <div id="parcelaPreviewBox" class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i>
+              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400 shrink-0"></i>
               <span id="parcelaPreviewText">1x de R$ 0,00</span>
             </div>
-            <span id="parcelaCompetenciaText" class="text-emerald-400 font-medium">Entra na fatura de ...</span>
+            <span id="parcelaCompetenciaText" class="text-emerald-400 font-medium text-[11px]">Entra na fatura de ...</span>
           </div>
 
           <div class="pt-2">
@@ -353,13 +343,19 @@
 
     <!-- TAB 3: EXTRATO POR RESPONSÁVEL -->
     <section id="tabExtrato" class="tab-content hidden space-y-6">
-      <div class="relative z-50 glass-card p-5 rounded-2xl flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between overflow-visible">
+      <div class="relative z-50 glass-card p-5 rounded-2xl flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between overflow-visible">
         <div>
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i>
-            Extrato por Responsável
-          </h2>
-          <p class="text-xs text-slate-400">Consolidado e acerto individual de contas</p>
+          <div class="flex items-center gap-3">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i>
+              Extrato por Responsável
+            </h2>
+            <div class="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
+              <span>Total Filtrado:</span>
+              <span id="extratoFilteredTotalBadge">R$ 0,00</span>
+            </div>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Consolidado e acerto individual de contas com status de pagamento</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:flex sm:items-center">
           
@@ -370,7 +366,6 @@
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
             <div id="ms-ext-resp" class="ms-dropdown hidden absolute z-[60] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
-              <!-- Injetado via JS -->
             </div>
           </div>
 
@@ -381,7 +376,6 @@
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
             <div id="ms-ext-cartao" class="ms-dropdown hidden absolute z-[60] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
-              <!-- Injetado via JS -->
             </div>
           </div>
 
@@ -392,14 +386,12 @@
       <div id="extratoExportArea" class="space-y-6">
         
         <div id="extratoCardsSummary" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Rendered dynamically -->
         </div>
 
         <div class="glass-card rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Despesas Detalhadas no Período</h3>
             
-            <!-- NOVAS AÇÕES EM MASSA E EXCEL -->
             <div class="flex items-center gap-2 flex-wrap">
               <span id="extratoItemCount" class="text-xs text-slate-400 mr-2">0 itens</span>
               <button onclick="deleteSelectedExtrato()" title="Excluir Lançamentos Selecionados" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-all text-xs font-semibold border border-rose-500/20">
@@ -433,7 +425,6 @@
                 </tr>
               </thead>
               <tbody id="extratoTableBody" class="divide-y divide-slate-800/60 text-slate-200">
-                <!-- Rendered dynamically with group headers -->
               </tbody>
             </table>
           </div>
@@ -441,7 +432,174 @@
       </div>
     </section>
 
-    <!-- TAB 4: CADASTROS -->
+    <!-- TAB 4: VISÃO GRÁFICA / ANALYTICS (POWER BI STYLE) -->
+    <section id="tabAnalytics" class="tab-content hidden space-y-4">
+      
+      <!-- Power BI Header & Interactive Slicers Bar -->
+      <div class="pbi-card p-3 rounded-2xl flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+          <div class="flex items-center gap-2">
+            <div class="p-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
+              <i data-lucide="line-chart" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-white leading-tight">Painel Executivo de Analytics</h2>
+              <p class="text-[10px] text-slate-400">Power BI Dashboard com Slicers e Filtragem Cruzada</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2 self-end sm:self-auto">
+            <button onclick="resetAnalyticsFilters()" title="Limpar todos os filtros" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 flex items-center gap-1 border border-slate-700 transition-all">
+              <i data-lucide="rotate-ccw" class="w-3 h-3 text-rose-400"></i>
+              <span>Resetar Filtros</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Slicers Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-400 mb-1">Ano</label>
+            <select id="pbiSlicerAno" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-400 mb-1">Mês</label>
+            <select id="pbiSlicerMes" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-400 mb-1">Responsável (Owner)</label>
+            <select id="pbiSlicerOwner" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-400 mb-1">Tipo Despesa</label>
+            <select id="pbiSlicerTipo" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
+              <option value="ALL">Todos os Tipos</option>
+              <option value="CARD">Cartão de Crédito</option>
+              <option value="OTHER">Outros / Fora do Cartão</option>
+            </select>
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label class="block text-[10px] font-semibold text-slate-400 mb-1">Banco / Cartão</label>
+            <select id="pbiSlicerBanco" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Mini Cards Banner -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="pbi-card p-3 rounded-xl border-l-4 border-l-teal-400">
+          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Selecionado</span>
+          <div id="pbiKpiTotal" class="text-base sm:text-lg font-bold text-white mt-0.5">R$ 0,00</div>
+        </div>
+        <div class="pbi-card p-3 rounded-xl border-l-4 border-l-slate-400">
+          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Em Cartão</span>
+          <div id="pbiKpiCartao" class="text-base sm:text-lg font-bold text-slate-200 mt-0.5">R$ 0,00</div>
+        </div>
+        <div class="pbi-card p-3 rounded-xl border-l-4 border-l-rose-400">
+          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Fora do Cartão</span>
+          <div id="pbiKpiOutros" class="text-base sm:text-lg font-bold text-rose-300 mt-0.5">R$ 0,00</div>
+        </div>
+        <div class="pbi-card p-3 rounded-xl border-l-4 border-l-amber-400">
+          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Qtd Lançamentos</span>
+          <div id="pbiKpiCount" class="text-base sm:text-lg font-bold text-amber-300 mt-0.5">0</div>
+        </div>
+      </div>
+
+      <!-- Analytics Main Dashboard Layout Grid (Matching Power BI Image) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        
+        <!-- TOP LEFT: Gastos por Mês (Stacked Bar Chart) (8 Cols) -->
+        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-7 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="bar-chart" class="w-3.5 h-3.5 text-teal-400"></i> Gastos por Mês
+            </h3>
+            <span class="text-[10px] text-slate-400">Clique na barra para filtrar o mês</span>
+          </div>
+          <div class="relative h-48 w-full">
+            <canvas id="pbiChartMonthTrend"></canvas>
+          </div>
+        </div>
+
+        <!-- TOP RIGHT: Gastos por Categoria (Horizontal Bar Chart) (5 Cols) -->
+        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="align-left" class="w-3.5 h-3.5 text-rose-400"></i> Gastos por Categoria
+            </h3>
+            <span class="text-[10px] text-slate-400">Clique p/ filtrar</span>
+          </div>
+          <div class="relative h-48 w-full">
+            <canvas id="pbiChartCategory"></canvas>
+          </div>
+        </div>
+
+        <!-- BOTTOM LEFT: Valor por Pessoa / Responsável (3 Cols) -->
+        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-4 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-indigo-400"></i> Valor por Pessoa
+            </h3>
+            <span class="text-[10px] text-slate-400">Clique p/ filtrar</span>
+          </div>
+          <div class="relative h-56 w-full">
+            <canvas id="pbiChartResponsible"></canvas>
+          </div>
+        </div>
+
+        <!-- BOTTOM CENTER: Ring / Doughnut Chart & Summary Matrix (4 Cols) -->
+        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-4 space-y-3 flex flex-col justify-between">
+          <div>
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <i data-lucide="pie-chart" class="w-3.5 h-3.5 text-teal-300"></i> % Utilização por Tipo / Cartão
+            </h3>
+            <div class="relative h-32 w-full my-1">
+              <canvas id="pbiChartTypeDoughnut"></canvas>
+            </div>
+          </div>
+
+          <!-- Summary Matrix Table (Hierarchy like Power BI) -->
+          <div class="border-t border-slate-800 pt-2 text-[11px] space-y-1">
+            <div class="font-bold text-slate-300 uppercase text-[10px] tracking-wider mb-1">Total Gastos por Tipo Despesa</div>
+            <div id="pbiSummaryMatrix" class="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM RIGHT: Extrato Despesas Table Matrix (4 Cols) -->
+        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-4 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-emerald-400"></i> Extrato Despesas
+            </h3>
+            <span id="pbiExtratoCount" class="text-[10px] text-slate-400">0 itens</span>
+          </div>
+
+          <div class="overflow-y-auto custom-scrollbar h-64 mt-2">
+            <table class="w-full text-left text-[11px]">
+              <thead class="sticky top-0 bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="p-1.5">Banco / Descrição</th>
+                  <th class="p-1.5 text-right">Soma de Valor</th>
+                </tr>
+              </thead>
+              <tbody id="pbiExtratoTableBody" class="divide-y divide-slate-800/50 text-slate-200">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 5: CADASTROS -->
     <section id="tabCadastros" class="tab-content hidden space-y-6">
       <div class="flex border-b border-slate-800 space-x-6 text-sm overflow-x-auto custom-scrollbar">
         <button onclick="switchCadastroSubTab('cadCartoes')" id="btnCadCartoes" class="pb-3 whitespace-nowrap border-b-2 border-emerald-500 font-semibold text-emerald-400">Cartões de Crédito</button>
@@ -517,22 +675,26 @@
 
   <!-- Mobile Floating Nav bar -->
   <nav class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-2 md:hidden">
-    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
-      <button onclick="switchTab('tabDashboard')" id="navTabDashboard" class="flex flex-col items-center py-1.5 px-2 text-emerald-400 font-medium">
+    <div class="max-w-md mx-auto grid grid-cols-5 gap-1 text-center">
+      <button onclick="switchTab('tabDashboard')" id="navTabDashboard" class="flex flex-col items-center py-1.5 px-1 text-emerald-400 font-medium">
         <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-        <span class="text-[10px] mt-1">Dash</span>
+        <span class="text-[9px] mt-1">Dash</span>
       </button>
-      <button onclick="openNewExpenseForm()" id="navTabLancar" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+      <button onclick="openNewExpenseForm()" id="navTabLancar" class="flex flex-col items-center py-1.5 px-1 text-slate-400 hover:text-slate-200">
         <i data-lucide="plus-square" class="w-5 h-5"></i>
-        <span class="text-[10px] mt-1">Lançar</span>
+        <span class="text-[9px] mt-1">Lançar</span>
       </button>
-      <button onclick="switchTab('tabExtrato')" id="navTabExtrato" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+      <button onclick="switchTab('tabExtrato')" id="navTabExtrato" class="flex flex-col items-center py-1.5 px-1 text-slate-400 hover:text-slate-200">
         <i data-lucide="receipt" class="w-5 h-5"></i>
-        <span class="text-[10px] mt-1">Extrato</span>
+        <span class="text-[9px] mt-1">Extrato</span>
       </button>
-      <button onclick="switchTab('tabCadastros')" id="navTabCadastros" class="flex flex-col items-center py-1.5 px-2 text-slate-400 hover:text-slate-200">
+      <button onclick="switchTab('tabAnalytics')" id="navTabAnalytics" class="flex flex-col items-center py-1.5 px-1 text-slate-400 hover:text-slate-200">
+        <i data-lucide="line-chart" class="w-5 h-5"></i>
+        <span class="text-[9px] mt-1">Analytics</span>
+      </button>
+      <button onclick="switchTab('tabCadastros')" id="navTabCadastros" class="flex flex-col items-center py-1.5 px-1 text-slate-400 hover:text-slate-200">
         <i data-lucide="settings" class="w-5 h-5"></i>
-        <span class="text-[10px] mt-1">Cadastros</span>
+        <span class="text-[9px] mt-1">Cadastros</span>
       </button>
     </div>
   </nav>
@@ -548,12 +710,14 @@
     <button onclick="switchTab('tabExtrato')" id="deskNavTabExtrato" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
       <i data-lucide="receipt" class="w-4 h-4"></i> Extrato por Responsável
     </button>
+    <button onclick="switchTab('tabAnalytics')" id="deskNavTabAnalytics" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+      <i data-lucide="line-chart" class="w-4 h-4"></i> Analytics
+    </button>
     <button onclick="switchTab('tabCadastros')" id="deskNavTabCadastros" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2">
       <i data-lucide="settings" class="w-4 h-4"></i> Cadastros
     </button>
   </aside>
 
-  <!-- MODALS -->
   <div id="modalSync" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
     <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -621,9 +785,31 @@
       categories: [],
       expenses: [],
       installments: [],
+      paidStatusMap: JSON.parse(localStorage.getItem('fincontrol_paid_status') || '{}'),
       activeTab: 'tabDashboard',
       activeCadastroSubTab: 'cadCartoes'
     };
+
+    // State for Power BI Interactive Analytics Tab
+    let pbiState = {
+      ano: 'ALL',
+      mes: 'ALL',
+      owner: 'ALL',
+      tipo: 'ALL',
+      banco: 'ALL',
+      categoria: 'ALL'
+    };
+
+    const pastelPalette = [
+      { bg: '#a7f3d0', fill: 'bg-emerald-300', text: 'text-emerald-300', border: 'border-emerald-300' },
+      { bg: '#bfdbfe', fill: 'bg-blue-300', text: 'text-blue-300', border: 'border-blue-300' },
+      { bg: '#ddd6fe', fill: 'bg-purple-300', text: 'text-purple-300', border: 'border-purple-300' },
+      { bg: '#fde68a', fill: 'bg-amber-300', text: 'text-amber-300', border: 'border-amber-300' },
+      { bg: '#fbcfe8', fill: 'bg-pink-300', text: 'text-pink-300', border: 'border-pink-300' },
+      { bg: '#99f6e4', fill: 'bg-teal-300', text: 'text-teal-300', border: 'border-teal-300' },
+      { bg: '#fecdd3', fill: 'bg-rose-300', text: 'text-rose-300', border: 'border-rose-300' },
+      { bg: '#c7d2fe', fill: 'bg-indigo-300', text: 'text-indigo-300', border: 'border-indigo-300' }
+    ];
 
     const defaultData = {
       cards: [
@@ -647,6 +833,8 @@
       installments: []
     };
 
+    let pbiChartInstances = {};
+
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setDefaultMonthPicker();
@@ -667,7 +855,6 @@
       renderAllViews();
     });
 
-    // Fechar dropdowns de multiselect ao clicar fora
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.ms-container')) {
         document.querySelectorAll('.ms-dropdown').forEach(el => el.classList.add('hidden'));
@@ -734,6 +921,7 @@
         categories: appState.categories, expenses: appState.expenses,
         installments: appState.installments
       }));
+      localStorage.setItem('fincontrol_paid_status', JSON.stringify(appState.paidStatusMap));
     }
 
     function normalizeWebAppUrl(url) {
@@ -812,8 +1000,8 @@
 
     function seedSampleData() {
       const today = new Date().toISOString().split('T')[0];
-      addExpenseRecord({ estabelecimento: 'Supermercado Central', categoria: 'cat1', responsável: 'r1', forma_pagamento: 'CARD', cartão: 'c1', valor_total: 450.00, parcelas: 3, data_compra: today }, false);
-      addExpenseRecord({ estabelecimento: 'Drogaria São Paulo', categoria: 'cat2', responsável: 'r2', forma_pagamento: 'CARD', cartão: 'c2', valor_total: 120.00, parcelas: 1, data_compra: today }, false);
+      addExpenseRecord({ estabelecimento: 'Supermercado Central', categoria: 'cat1', responsável: 'r1', forma_pagamento: 'CARD', cartão: 'c1', valor_input: 150.00, parcelas: 3, data_compra: today }, false);
+      addExpenseRecord({ estabelecimento: 'Drogaria São Paulo', categoria: 'cat2', responsável: 'r2', forma_pagamento: 'CARD', cartão: 'c2', valor_input: 120.00, parcelas: 1, data_compra: today }, false);
       saveLocalData();
     }
 
@@ -821,11 +1009,15 @@
       const expenseId = existingId || ('exp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
       const created_em = new Date().toISOString();
 
+      const numParcelas = parseInt(data.parcelas, 10) || 1;
+      const inputVal = parseFloat(data.valor_input) || 0;
+      const valorTotal = numParcelas > 1 ? (inputVal * numParcelas) : inputVal;
+
       const newExpense = {
         id: expenseId, estabelecimento: data.estabelecimento, categoria: data.categoria,
         responsável: data.responsável, forma_pagamento: data.forma_pagamento,
         cartão: data.forma_pagamento === 'CARD' ? data.cartão : '',
-        valor_total: parseFloat(data.valor_total), parcelas: parseInt(data.parcelas, 10),
+        valor_total: valorTotal, parcelas: numParcelas,
         data_compra: data.data_compra, criado_em: created_em
       };
 
@@ -860,7 +1052,6 @@
       const container = document.getElementById(dropdownId);
       if (!container) return;
       
-      // Preservar a seleção atual se o dropdown já existir
       const currentSelected = getSelectedValues(dropdownId);
       const hasSelection = currentSelected.length > 0;
       const isAll = hasSelection ? currentSelected.includes('ALL') : true;
@@ -883,7 +1074,6 @@
       });
       container.innerHTML = html;
 
-      // Atualiza a label principal para refletir a memória da seleção
       const label = document.getElementById(labelId);
       if (label) {
         if (isAll) {
@@ -936,7 +1126,6 @@
     }
 
     function populateFormDropdowns() {
-      // 1. Populando forms padrão (Lançar despesa)
       const selCat = document.getElementById('inpCategoria');
       if (selCat) selCat.innerHTML = appState.categories.filter(c => c.ativo === 'SIM' || c.ativo === true).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
 
@@ -947,7 +1136,6 @@
       const selCartao = document.getElementById('inpCartao');
       if (selCartao) selCartao.innerHTML = appState.cards.filter(c => c.ativo === 'SIM' || c.ativo === true).map(c => `<option value="${c.id}">${c.nome} (Fecha dia ${c.dia_fechamento})</option>`).join('');
 
-      // 2. Construindo Multi-Selects de Filtros
       const respsList = appState.responsibles.filter(r => r.ativo === 'SIM' || r.ativo === true).map(r => ({value: r.id, label: r.nome}));
       
       const cartoesList = [
@@ -955,13 +1143,13 @@
         ...appState.cards.filter(c => c.ativo === 'SIM' || c.ativo === true).map(c => ({value: c.id, label: c.nome}))
       ];
 
-      // Se os dropdowns ainda não foram populados (para não perder a seleção ao sincronizar, idealmente verificar estado, mas vamos sobrescrever e resetar para "ALL")
       buildMultiSelectCheckboxes('ms-dash-resp', 'label-dash-resp', 'Todos Responsáveis', respsList);
       buildMultiSelectCheckboxes('ms-ext-resp', 'label-ext-resp', 'Todos Responsáveis', respsList);
       
       buildMultiSelectCheckboxes('ms-dash-cartao', 'label-dash-cartao', 'Todos Cartões/Formas', cartoesList);
       buildMultiSelectCheckboxes('ms-ext-cartao', 'label-ext-cartao', 'Todos Cartões/Formas', cartoesList);
 
+      populatePbiSlicers();
       updateParcelaPreview();
     }
 
@@ -983,23 +1171,41 @@
       const inpData = document.getElementById('inpDataCompra');
       const inpForma = document.getElementById('inpFormaPagamento');
       const inpCart = document.getElementById('inpCartao');
+      const lblValorInput = document.getElementById('lblValorInput');
 
       if (!inpValor || !inpParc || !inpData) return;
-      const valorTotal = parseFloat(inpValor.value) || 0;
+      
+      const inputVal = parseFloat(inpValor.value) || 0;
       const numParcelas = parseInt(inpParc.value, 10) || 1;
       const dataCompra = inpData.value || new Date().toISOString().split('T')[0];
       const formaPagamento = inpForma ? inpForma.value : 'CARD';
       const cartaoId = inpCart ? inpCart.value : '';
 
-      const valP = numParcelas > 0 ? (valorTotal / numParcelas) : 0;
+      if (lblValorInput) {
+        if (numParcelas > 1) {
+          lblValorInput.innerText = 'Valor da Parcela (R$) *';
+        } else {
+          lblValorInput.innerText = 'Valor Total (R$) *';
+        }
+      }
+
+      const valParcela = inputVal;
+      const valTotal = numParcelas > 1 ? (inputVal * numParcelas) : inputVal;
+
       const txtPreview = document.getElementById('parcelaPreviewText');
-      if (txtPreview) txtPreview.innerText = `${numParcelas}x de ${formatMoney(valP)} (Total: ${formatMoney(valorTotal)})`;
+      if (txtPreview) {
+        if (numParcelas > 1) {
+          txtPreview.innerHTML = `<strong>${numParcelas}x de ${formatMoney(valParcela)}</strong> &rarr; <span class="text-emerald-400 font-bold">Total: ${formatMoney(valTotal)}</span>`;
+        } else {
+          txtPreview.innerHTML = `<strong>À Vista: ${formatMoney(valTotal)}</strong>`;
+        }
+      }
 
       const txtComp = document.getElementById('parcelaCompetenciaText');
       if (txtComp) {
         if (dataCompra) {
           const comp = calculateCompetency(dataCompra, formaPagamento, cartaoId);
-          txtComp.innerText = `Entra na fatura/mês de ${getMonthLabel(comp.year, comp.month)}`;
+          txtComp.innerText = `Primeira parcela na fatura de ${getMonthLabel(comp.year, comp.month)}`;
         } else txtComp.innerText = '';
       }
     }
@@ -1045,8 +1251,14 @@
           } else {
             totalOutros += val;
           }
-          const catName = (appState.categories.find(c => c.id === parentExp.categoria) || {}).nome || 'Outros';
-          catTotalsMap[catName] = (catTotalsMap[catName] || 0) + val;
+          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
+          const catKey = catObj ? catObj.id : 'outro';
+          const catName = catObj ? catObj.nome : 'Outros';
+          
+          if (!catTotalsMap[catKey]) {
+            catTotalsMap[catKey] = { id: catKey, nome: catName, val: 0 };
+          }
+          catTotalsMap[catKey].val += val;
         }
       });
 
@@ -1059,7 +1271,6 @@
       cardsGrid.innerHTML = '';
       appState.cards.forEach(c => {
         const sum = cardTotalsMap[c.id] || 0;
-        // Lógica de opacidade: se selecionou algo específico que exclui esse cartão, opacidade baixa
         const isExcluded = (!selectedCartoes.includes('ALL') && !selectedCartoes.includes(c.id));
         cardsGrid.innerHTML += `
           <div onclick="showDetailModal('Fatura Cartão: ${c.nome}', 'CARD_SPECIFIC', '${c.id}')" class="glass-card p-4 rounded-2xl cursor-pointer transition-all flex flex-col justify-between hover:border-emerald-500/40 ${isExcluded ? 'opacity-30' : ''}">
@@ -1077,27 +1288,97 @@
         `;
       });
 
-      const tbodyCat = document.getElementById('dashCategoryTable');
-      const tfootCat = document.getElementById('dashCategoryTableFoot');
-      const sortedCats = Object.entries(catTotalsMap).sort((a,b) => b[1] - a[1]);
-      
-      if (sortedCats.length > 0) {
-        tbodyCat.innerHTML = sortedCats.map(([cat, val]) => `
-          <tr class="hover:bg-slate-900/50 transition-colors">
-            <td class="p-2.5 font-medium text-slate-300">${cat}</td>
-            <td class="p-2.5 text-right text-slate-400 text-[11px]">${((val / totalMes) * 100).toFixed(1)}%</td>
-            <td class="p-2.5 text-right font-bold text-slate-100">${formatMoney(val)}</td>
-          </tr>
-        `).join('');
-        tfootCat.classList.remove('hidden');
-        tfootCat.innerHTML = `<tr class="bg-slate-900/40"><td class="p-2.5 font-bold uppercase tracking-wider text-[11px]">Total Geral</td><td class="p-2.5 text-right text-slate-400 text-[11px]">100%</td><td class="p-2.5 text-right font-bold text-emerald-400">${formatMoney(totalMes)}</td></tr>`;
+      const visualCatContainer = document.getElementById('dashCategoryVisualContainer');
+      const sortedCats = Object.values(catTotalsMap).sort((a,b) => b.val - a.val);
+
+      if (sortedCats.length > 0 && totalMes > 0) {
+        visualCatContainer.innerHTML = sortedCats.map((cat, idx) => {
+          const pct = ((cat.val / totalMes) * 100).toFixed(1);
+          const palette = pastelPalette[idx % pastelPalette.length];
+          return `
+            <div onclick="showCategoryDetailModal('${cat.nome.replace(/'/g, "\\'")}', '${cat.id}')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${palette.bg}"></span>
+                  <span class="font-semibold text-slate-200 group-hover:text-white">${cat.nome}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-xs ${palette.text}">${pct}%</span>
+                  <span class="font-bold text-slate-100">${formatMoney(cat.val)}</span>
+                </div>
+              </div>
+              <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background-color: ${palette.bg}"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
       } else {
-        tbodyCat.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500 text-xs">Nenhum gasto neste período.</td></tr>`;
-        tfootCat.classList.add('hidden');
+        visualCatContainer.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs">Nenhum gasto registrado neste período.</div>`;
       }
 
       renderFutureMonthsProjection(selYear, selMonth, selectedResps, selectedCartoes);
       generateAIInsights();
+      lucide.createIcons();
+    }
+
+    function showCategoryDetailModal(categoryName, categoryId) {
+      const selectedMesAno = document.getElementById('dashFilterMesAno').value;
+      if (!selectedMesAno) return;
+
+      const [selY, selM] = selectedMesAno.split('-').map(Number);
+      const resps = getSelectedValues('ms-dash-resp');
+      const cartoes = getSelectedValues('ms-dash-cartao');
+
+      document.getElementById('modalDetailsTitle').innerText = `Despesas em: ${categoryName}`;
+      document.getElementById('modalDetailsSubtitle').innerText = `Período: ${selectedMesAno} (Filtros ativos mantidos)`;
+
+      const match = appState.installments.filter(p => {
+        if(parseInt(p.ano_competencia,10) !== selY || parseInt(p.mes_competencia,10) !== selM) return false;
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if(!e) return false;
+        
+        if (e.categoria !== categoryId) {
+          const catObj = appState.categories.find(c => c.id === e.categoria);
+          if (!catObj || catObj.nome !== categoryName) return false;
+        }
+
+        if(!resps.includes('ALL') && !resps.includes(e.responsável)) return false;
+        
+        if(!cartoes.includes('ALL')) {
+           const isOther = e.forma_pagamento !== 'CARD';
+           if(isOther && !cartoes.includes('OTHER')) return false;
+           if(!isOther && !cartoes.includes(e.cartão)) return false;
+        }
+
+        return true;
+      });
+
+      const container = document.getElementById('modalDetailsList');
+      if(match.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">Nenhuma despesa encontrada para esta categoria neste filtro.</p>`;
+      } else {
+        container.innerHTML = match.map(p => {
+          const e = appState.expenses.find(x => x.id === p.despesa_id);
+          const r = (appState.responsibles.find(x => x.id === e.responsável) || {}).nome || '-';
+          const card = e.forma_pagamento === 'CARD' ? ((appState.cards.find(x=>x.id===e.cartão)||{}).nome||'Cartão') : 'Pix/Débito/Dinheiro';
+          return `
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-100">${e.estabelecimento}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 text-[10px]">${card}</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Responsável: <strong class="text-slate-200">${r}</strong> &bull; Parcela ${p.parcela_atual}/${p.total_parcelas} &bull; Data: ${e.data_compra}</p>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-emerald-400 text-sm">${formatMoney(p.valor_parcela)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      openModal('modalDetails'); 
       lucide.createIcons();
     }
 
@@ -1128,10 +1409,9 @@
     }
 
     function generateAIInsights() {
-       // Omitido detalhes exatos para brevidade, reutiliza lógica parecida.
        const box = document.getElementById('aiInsightBox');
        if(!box) return;
-       box.innerHTML = `<p class="text-[11px] text-slate-400 py-1">Insights baseados nos filtros ativos...</p>`;
+       box.innerHTML = `<p class="text-[11px] text-slate-300 py-1">Análise concluída: Faturas e despesas divididas proporcionalmente de acordo com os responsáveis e faturas do mês.</p>`;
     }
 
     function renderExtrato() {
@@ -1143,7 +1423,6 @@
       const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
       document.getElementById('selectAllCheckbox').checked = false;
 
-      // 1. Filtrar as parcelas
       const activeInstallments = appState.installments.filter(p => {
         if (parseInt(p.ano_competencia, 10) !== selYear || parseInt(p.mes_competencia, 10) !== selMonth) return false;
         
@@ -1160,7 +1439,10 @@
         return true;
       });
 
-      // 2. Resumo de Cards e Outros por Responsável
+      const filteredTotalVal = activeInstallments.reduce((sum, p) => sum + (parseFloat(p.valor_parcela) || 0), 0);
+      const totalBadge = document.getElementById('extratoFilteredTotalBadge');
+      if (totalBadge) totalBadge.innerText = formatMoney(filteredTotalVal);
+
       const respSummaryMap = {};
       appState.responsibles.forEach(r => respSummaryMap[r.id] = { nome: r.nome, cardBreakdown: {}, totalOutros: 0, totalGeral: 0 });
 
@@ -1180,25 +1462,43 @@
 
       const containerSummary = document.getElementById('extratoCardsSummary');
       containerSummary.innerHTML = '';
+      
       Object.keys(respSummaryMap).forEach(respId => {
         if (!selectedResps.includes('ALL') && !selectedResps.includes(respId)) return;
         const rData = respSummaryMap[respId];
+        
         if (rData.totalGeral > 0) {
           const details = Object.keys(rData.cardBreakdown).map(cName => `${cName}: <span class="font-bold text-teal-300">${formatMoney(rData.cardBreakdown[cName])}</span>`);
-          if (rData.totalOutros > 0) details.push(`Fora: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
+          if (rData.totalOutros > 0) details.push(`Fora do Cartão: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
           
+          const paidKey = `${selectedMesAno}_${respId}`;
+          const isPaid = !!appState.paidStatusMap[paidKey];
+
           containerSummary.innerHTML += `
-            <div class="glass-card p-4 rounded-2xl space-y-2 border-l-4 border-l-emerald-500">
-              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span class="font-bold text-slate-100 text-sm flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-emerald-400"></i> ${rData.nome}</span>
-                <span class="text-sm font-extrabold text-emerald-400">${formatMoney(rData.totalGeral)}</span>
+            <div class="glass-card p-4 rounded-2xl space-y-3 border-l-4 ${isPaid ? 'border-l-emerald-500 bg-emerald-950/20' : 'border-l-amber-500'} transition-all">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg ${isPaid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-300'} flex items-center justify-center font-bold text-xs">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                  </div>
+                  <span class="font-bold text-slate-100 text-sm">${rData.nome}</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-extrabold ${isPaid ? 'text-emerald-400' : 'text-slate-100'}">${formatMoney(rData.totalGeral)}</span>
+                  <button onclick="togglePaidStatus('${selectedMesAno}', '${respId}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${isPaid ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}">
+                    <i data-lucide="${isPaid ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>
+                    <span>${isPaid ? 'Pago' : 'Pendente'}</span>
+                  </button>
+                </div>
               </div>
-              <div class="text-xs text-slate-300 space-y-1"><p>${details.length > 0 ? details.join(' &bull; ') : '-'}</p></div>
+              <div class="text-xs text-slate-300 space-y-1">
+                <p class="leading-relaxed">${details.length > 0 ? details.join(' &bull; ') : '-'}</p>
+              </div>
             </div>`;
         }
       });
 
-      // 3. Agrupar Itens da Tabela por Cartão/Forma
       const tbody = document.getElementById('extratoTableBody');
       tbody.innerHTML = '';
       document.getElementById('extratoItemCount').innerText = `${activeInstallments.length} item(ns)`;
@@ -1212,20 +1512,23 @@
         grouped[groupName].push({p, parentExp});
       });
 
-      // Salva os dados processados para exportação Excel
       window.currentExtratoExportData = [];
 
       Object.keys(grouped).sort().forEach(groupName => {
-        // Cabeçalho de Grupo
+        const groupTotal = grouped[groupName].reduce((s, item) => s + (parseFloat(item.p.valor_parcela) || 0), 0);
+
         tbody.innerHTML += `
-          <tr class="bg-slate-900/80 border-b border-slate-800">
-            <td colspan="8" class="p-2.5 pl-4 text-[11px] uppercase tracking-wider font-bold text-emerald-400">
+          <tr class="bg-slate-900/90 border-b border-slate-800">
+            <td colspan="6" class="p-2.5 pl-4 text-[11px] uppercase tracking-wider font-bold text-emerald-400">
               <i data-lucide="${groupName.includes('Fora') ? 'banknote' : 'credit-card'}" class="w-3.5 h-3.5 inline mr-1"></i> ${groupName}
             </td>
+            <td class="p-2.5 text-right font-extrabold text-teal-300 text-xs">
+              Subtotal: ${formatMoney(groupTotal)}
+            </td>
+            <td class="p-2.5 action-column"></td>
           </tr>
         `;
 
-        // Linhas de Lançamento
         grouped[groupName].forEach(({p, parentExp}) => {
           const catObj = appState.categories.find(c => c.id === parentExp.categoria);
           const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
@@ -1267,7 +1570,445 @@
       lucide.createIcons();
     }
 
-    // Ações em Massa Extrato
+    function togglePaidStatus(mesAnoKey, respId) {
+      const key = `${mesAnoKey}_${respId}`;
+      appState.paidStatusMap[key] = !appState.paidStatusMap[key];
+      saveLocalData();
+      renderExtrato();
+      showToast(appState.paidStatusMap[key] ? "Marcado como PAGO" : "Marcado como PENDENTE", "info");
+    }
+
+
+    function populatePbiSlicers() {
+      // 1. Populates Years
+      const yearsSet = new Set();
+      const currentYear = new Date().getFullYear();
+      yearsSet.add(currentYear);
+      yearsSet.add(2025);
+      yearsSet.add(2026);
+      appState.installments.forEach(p => yearsSet.add(parseInt(p.ano_competencia, 10)));
+      
+      const sortedYears = Array.from(yearsSet).sort((a,b) => b - a);
+      const selAno = document.getElementById('pbiSlicerAno');
+      if (selAno) {
+        selAno.innerHTML = `<option value="ALL">Todos os Anos</option>` + sortedYears.map(y => `<option value="${y}" ${pbiState.ano == y ? 'selected' : ''}>${y}</option>`).join('');
+      }
+
+      // 2. Populates Months
+      const monthsList = [
+        { v: '1', l: 'Janeiro' }, { v: '2', l: 'Fevereiro' }, { v: '3', l: 'Março' },
+        { v: '4', l: 'Abril' }, { v: '5', l: 'Maio' }, { v: '6', l: 'Junho' },
+        { v: '7', l: 'Julho' }, { v: '8', l: 'Agosto' }, { v: '9', l: 'Setembro' },
+        { v: '10', l: 'Outubro' }, { v: '11', l: 'Novembro' }, { v: '12', l: 'Dezembro' }
+      ];
+      const selMes = document.getElementById('pbiSlicerMes');
+      if (selMes) {
+        selMes.innerHTML = `<option value="ALL">Todos os Meses</option>` + monthsList.map(m => `<option value="${m.v}" ${pbiState.mes == m.v ? 'selected' : ''}>${m.l}</option>`).join('');
+      }
+
+      // 3. Populates Owners
+      const selOwner = document.getElementById('pbiSlicerOwner');
+      if (selOwner) {
+        selOwner.innerHTML = `<option value="ALL">Todos Responsáveis</option>` + appState.responsibles.map(r => `<option value="${r.id}" ${pbiState.owner === r.id ? 'selected' : ''}>${r.nome}</option>`).join('');
+      }
+
+      // 4. Populates Cartões/Bancos
+      const selBanco = document.getElementById('pbiSlicerBanco');
+      if (selBanco) {
+        selBanco.innerHTML = `<option value="ALL">Todos Cartões/Bancos</option>` + 
+          appState.cards.map(c => `<option value="${c.id}" ${pbiState.banco === c.id ? 'selected' : ''}>${c.nome}</option>`).join('') +
+          `<option value="OTHER" ${pbiState.banco === 'OTHER' ? 'selected' : ''}>Fora do Cartão (Pix/Dinheiro)</option>`;
+      }
+    }
+
+    function onPbiSlicerChange() {
+      pbiState.ano = document.getElementById('pbiSlicerAno').value;
+      pbiState.mes = document.getElementById('pbiSlicerMes').value;
+      pbiState.owner = document.getElementById('pbiSlicerOwner').value;
+      pbiState.tipo = document.getElementById('pbiSlicerTipo').value;
+      pbiState.banco = document.getElementById('pbiSlicerBanco').value;
+      renderAnalytics();
+    }
+
+    function resetAnalyticsFilters() {
+      pbiState = { ano: 'ALL', mes: 'ALL', owner: 'ALL', tipo: 'ALL', banco: 'ALL', categoria: 'ALL' };
+      populatePbiSlicers();
+      document.getElementById('pbiSlicerTipo').value = 'ALL';
+      renderAnalytics();
+      showToast("Filtros do Analytics resetados", "info");
+    }
+
+    function filterPbiData() {
+      return appState.installments.filter(p => {
+        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        if (!parentExp) return false;
+
+        // Filter Slicer: Ano
+        if (pbiState.ano !== 'ALL' && parseInt(p.ano_competencia, 10) !== parseInt(pbiState.ano, 10)) return false;
+        
+        // Filter Slicer: Mês
+        if (pbiState.mes !== 'ALL' && parseInt(p.mes_competencia, 10) !== parseInt(pbiState.mes, 10)) return false;
+
+        // Filter Slicer: Owner/Responsável
+        if (pbiState.owner !== 'ALL' && parentExp.responsável !== pbiState.owner) return false;
+
+        // Filter Slicer: Tipo Despesa (CARD vs OTHER)
+        if (pbiState.tipo === 'CARD' && parentExp.forma_pagamento !== 'CARD') return false;
+        if (pbiState.tipo === 'OTHER' && parentExp.forma_pagamento === 'CARD') return false;
+
+        // Filter Slicer: Banco / Cartão
+        if (pbiState.banco !== 'ALL') {
+          if (pbiState.banco === 'OTHER' && parentExp.forma_pagamento === 'CARD') return false;
+          if (pbiState.banco !== 'OTHER' && parentExp.cartão !== pbiState.banco) return false;
+        }
+
+        // Filter Cross-Filter: Categoria
+        if (pbiState.categoria !== 'ALL' && parentExp.categoria !== pbiState.categoria) return false;
+
+        return true;
+      });
+    }
+
+    function renderAnalytics() {
+      populatePbiSlicers();
+      const filtered = filterPbiData();
+
+      // 1. Calculate KPI Values
+      let totalGeral = 0, totalCartao = 0, totalOutros = 0;
+      filtered.forEach(p => {
+        const val = parseFloat(p.valor_parcela) || 0;
+        totalGeral += val;
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if (e) {
+          if (e.forma_pagamento === 'CARD') totalCartao += val;
+          else totalOutros += val;
+        }
+      });
+
+      document.getElementById('pbiKpiTotal').innerText = formatMoney(totalGeral);
+      document.getElementById('pbiKpiCartao').innerText = formatMoney(totalCartao);
+      document.getElementById('pbiKpiOutros').innerText = formatMoney(totalOutros);
+      document.getElementById('pbiKpiCount').innerText = filtered.length;
+
+      // 2. Destroy Old Charts
+      ['monthTrend', 'category', 'responsible', 'typeDoughnut'].forEach(key => {
+        if (pbiChartInstances[key]) pbiChartInstances[key].destroy();
+      });
+
+      // Chart Colors matching Power BI dark styling from screenshot (#2b3d4f slate, #c26d93 rose-purple, vibrant pastels)
+      const colorCard = '#2b3d4f';
+      const colorOutros = '#c26d93';
+      const multiPalette = ['#2b3d4f', '#c26d93', '#38bdf8', '#fb7185', '#34d399', '#fbbf24', '#a855f7', '#f97316'];
+
+      // --- CHART 1: Gastos por Mês (Stacked Bar Chart for Jan-Dec) ---
+      const monthsStr = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const monthCardData = Array(12).fill(0);
+      const monthOutrosData = Array(12).fill(0);
+
+      filtered.forEach(p => {
+        const mIdx = parseInt(p.mes_competencia, 10) - 1;
+        if (mIdx >= 0 && mIdx < 12) {
+          const val = parseFloat(p.valor_parcela) || 0;
+          const e = appState.expenses.find(x => x.id === p.despesa_id);
+          if (e && e.forma_pagamento === 'CARD') monthCardData[mIdx] += val;
+          else monthOutrosData[mIdx] += val;
+        }
+      });
+
+      const ctxMonth = document.getElementById('pbiChartMonthTrend');
+      if (ctxMonth) {
+        pbiChartInstances.monthTrend = new Chart(ctxMonth, {
+          type: 'bar',
+          data: {
+            labels: monthsStr,
+            datasets: [
+              { label: 'Cartão de Crédito', data: monthCardData, backgroundColor: colorCard, borderRadius: 3 },
+              { label: 'Fora do Cartão', data: monthOutrosData, backgroundColor: colorOutros, borderRadius: 3 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { size: 9 }, boxWidth: 10 } },
+              tooltip: {
+                callbacks: {
+                  label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.raw)}`
+                }
+              }
+            },
+            onClick: (e, elements) => {
+              if (elements.length > 0) {
+                const clickedIdx = elements[0].index;
+                pbiState.mes = String(clickedIdx + 1);
+                document.getElementById('pbiSlicerMes').value = pbiState.mes;
+                renderAnalytics();
+              }
+            },
+            scales: {
+              x: { stacked: true, ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
+              y: { 
+                stacked: true, 
+                ticks: { 
+                  color: '#94a3b8', 
+                  font: { size: 9 },
+                  callback: val => 'R$ ' + (val >= 1000 ? (val/1000).toFixed(1) + ' Mil' : val)
+                }, 
+                grid: { color: 'rgba(255,255,255,0.05)' } 
+              }
+            }
+          }
+        });
+      }
+
+      // --- CHART 2: Gastos por Categoria (Horizontal Bar Chart) ---
+      const catTotalsMap = {};
+      filtered.forEach(p => {
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if (e) {
+          const catObj = appState.categories.find(c => c.id === e.categoria);
+          const name = catObj ? catObj.nome : 'Outros';
+          const catId = catObj ? catObj.id : 'ALL';
+          if (!catTotalsMap[name]) catTotalsMap[name] = { id: catId, val: 0 };
+          catTotalsMap[name].val += (parseFloat(p.valor_parcela) || 0);
+        }
+      });
+
+      const sortedCats = Object.entries(catTotalsMap).sort((a,b) => b[1].val - a[1].val).slice(0, 8);
+      const ctxCat = document.getElementById('pbiChartCategory');
+      if (ctxCat) {
+        pbiChartInstances.category = new Chart(ctxCat, {
+          type: 'bar',
+          data: {
+            labels: sortedCats.map(c => c[0]),
+            datasets: [{
+              label: 'Gastos (R$)',
+              data: sortedCats.map(c => c[1].val),
+              backgroundColor: colorCard,
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: ctx => formatMoney(ctx.raw) } }
+            },
+            onClick: (e, elements) => {
+              if (elements.length > 0) {
+                const clickedCatName = sortedCats[elements[0].index][0];
+                const catObj = appState.categories.find(c => c.nome === clickedCatName);
+                if (catObj) {
+                  pbiState.categoria = pbiState.categoria === catObj.id ? 'ALL' : catObj.id;
+                  renderAnalytics();
+                }
+              }
+            },
+            scales: {
+              x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#cbd5e1', font: { size: 9 } }, grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      // --- CHART 3: Valor por Pessoa / Responsável (Horizontal Bar Chart) ---
+      const respTotalsMap = {};
+      filtered.forEach(p => {
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if (e) {
+          const respObj = appState.responsibles.find(r => r.id === e.responsável);
+          const name = respObj ? respObj.nome : 'Outros';
+          const rId = respObj ? respObj.id : 'ALL';
+          if (!respTotalsMap[name]) respTotalsMap[name] = { id: rId, val: 0 };
+          respTotalsMap[name].val += (parseFloat(p.valor_parcela) || 0);
+        }
+      });
+
+      const sortedResps = Object.entries(respTotalsMap).sort((a,b) => b[1].val - a[1].val);
+      const ctxResp = document.getElementById('pbiChartResponsible');
+      if (ctxResp) {
+        pbiChartInstances.responsible = new Chart(ctxResp, {
+          type: 'bar',
+          data: {
+            labels: sortedResps.map(r => r[0]),
+            datasets: [{
+              label: 'Valor Total (R$)',
+              data: sortedResps.map(r => r[1].val),
+              backgroundColor: sortedResps.map((_, i) => multiPalette[i % multiPalette.length]),
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: ctx => formatMoney(ctx.raw) } }
+            },
+            onClick: (e, elements) => {
+              if (elements.length > 0) {
+                const clickedRespName = sortedResps[elements[0].index][0];
+                const respObj = appState.responsibles.find(r => r.nome === clickedRespName);
+                if (respObj) {
+                  pbiState.owner = pbiState.owner === respObj.id ? 'ALL' : respObj.id;
+                  document.getElementById('pbiSlicerOwner').value = pbiState.owner;
+                  renderAnalytics();
+                }
+              }
+            },
+            scales: {
+              x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#cbd5e1', font: { size: 9 } }, grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      // --- CHART 4: % Utilização por Cartão (Doughnut Chart) ---
+      const bankTotalsMap = {};
+      filtered.forEach(p => {
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if (e) {
+          const bName = e.forma_pagamento === 'CARD' ? ((appState.cards.find(c => c.id === e.cartão) || {}).nome || 'Cartão') : 'Fora do Cartão';
+          bankTotalsMap[bName] = (bankTotalsMap[bName] || 0) + (parseFloat(p.valor_parcela) || 0);
+        }
+      });
+
+      const ctxDoughnut = document.getElementById('pbiChartTypeDoughnut');
+      if (ctxDoughnut) {
+        pbiChartInstances.typeDoughnut = new Chart(ctxDoughnut, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(bankTotalsMap),
+            datasets: [{
+              data: Object.values(bankTotalsMap),
+              backgroundColor: [colorCard, colorOutros, '#38bdf8', '#fbbf24', '#34d399', '#a855f7'],
+              borderWidth: 1,
+              borderColor: '#0f172a'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 9 }, boxWidth: 8 } },
+              tooltip: {
+                callbacks: {
+                  label: ctx => {
+                    const pct = totalGeral > 0 ? ((ctx.raw / totalGeral) * 100).toFixed(1) : '0';
+                    return `${ctx.label}: ${formatMoney(ctx.raw)} (${pct}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 3. Render Summary Matrix Hierarchy Table
+      const summaryContainer = document.getElementById('pbiSummaryMatrix');
+      summaryContainer.innerHTML = '';
+
+      if (totalGeral === 0) {
+        summaryContainer.innerHTML = `<p class="text-slate-500 text-[10px] py-1">Nenhum gasto no filtro atual.</p>`;
+      } else {
+        // Hierarchy 1: Cartão de Crédito
+        if (totalCartao > 0) {
+          const pctCard = ((totalCartao / totalGeral) * 100).toFixed(2);
+          summaryContainer.innerHTML += `
+            <div class="font-bold text-slate-200 flex justify-between bg-slate-900/60 p-1 rounded">
+              <span>&boxvr; Cartão de Crédito</span>
+              <span class="text-emerald-400">${formatMoney(totalCartao)} <span class="text-[9px] text-slate-400 font-normal">(${pctCard}%)</span></span>
+            </div>
+          `;
+          appState.cards.forEach(c => {
+            const sumCard = bankTotalsMap[c.nome] || 0;
+            if (sumCard > 0) {
+              const p = ((sumCard / totalGeral) * 100).toFixed(2);
+              summaryContainer.innerHTML += `
+                <div class="pl-4 text-[10px] text-slate-300 flex justify-between hover:bg-slate-800/40 p-0.5 rounded cursor-pointer" onclick="filterByCard('${c.id}')">
+                  <span>&bull; ${c.nome}</span>
+                  <span class="font-mono">${formatMoney(sumCard)} (${p}%)</span>
+                </div>
+              `;
+            }
+          });
+        }
+
+        // Hierarchy 2: Fora do Cartão / Despesa Fixa
+        if (totalOutros > 0) {
+          const pctOutros = ((totalOutros / totalGeral) * 100).toFixed(2);
+          summaryContainer.innerHTML += `
+            <div class="font-bold text-slate-200 flex justify-between bg-slate-900/60 p-1 rounded mt-1">
+              <span>&boxvr; Outros / Pix / Débito</span>
+              <span class="text-rose-300">${formatMoney(totalOutros)} <span class="text-[9px] text-slate-400 font-normal">(${pctOutros}%)</span></span>
+            </div>
+          `;
+        }
+
+        summaryContainer.innerHTML += `
+          <div class="font-bold text-slate-100 flex justify-between border-t border-slate-800 pt-1 mt-1">
+            <span>Total</span>
+            <span class="text-emerald-400">${formatMoney(totalGeral)} (100.00%)</span>
+          </div>
+        `;
+      }
+
+      // 4. Render Extrato Despesas Matrix Table
+      const extratoBody = document.getElementById('pbiExtratoTableBody');
+      extratoBody.innerHTML = '';
+      document.getElementById('pbiExtratoCount').innerText = `${filtered.length} itens`;
+
+      const extratoGrouped = {};
+      filtered.forEach(p => {
+        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        if (e) {
+          const bName = e.forma_pagamento === 'CARD' ? ((appState.cards.find(c => c.id === e.cartão) || {}).nome || 'Cartão') : 'Outros / Pix';
+          if (!extratoGrouped[bName]) extratoGrouped[bName] = [];
+          extratoGrouped[bName].push({ p, e });
+        }
+      });
+
+      Object.keys(extratoGrouped).sort().forEach(bName => {
+        const groupSum = extratoGrouped[bName].reduce((s, item) => s + (parseFloat(item.p.valor_parcela) || 0), 0);
+        
+        // Group Header
+        extratoBody.innerHTML += `
+          <tr class="bg-slate-900/90 font-bold text-slate-300">
+            <td class="p-1.5 font-bold text-teal-300">&boxvr; ${bName}</td>
+            <td class="p-1.5 text-right text-emerald-400 font-bold">${formatMoney(groupSum)}</td>
+          </tr>
+        `;
+
+        // Item Sub-rows
+        extratoGrouped[bName].forEach(({ p, e }) => {
+          const val = parseFloat(p.valor_parcela) || 0;
+          extratoBody.innerHTML += `
+            <tr class="hover:bg-slate-800/40 text-slate-300 text-[10px]">
+              <td class="p-1.5 pl-4 truncate max-w-[140px]" title="${e.estabelecimento}">
+                ${e.estabelecimento} <span class="text-slate-500">(${p.parcela_atual}/${p.total_parcelas})</span>
+              </td>
+              <td class="p-1.5 text-right font-mono">${formatMoney(val)}</td>
+            </tr>
+          `;
+        });
+      });
+
+      if (filtered.length === 0) {
+        extratoBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-500 text-[11px]">Nenhum lançamento para o filtro ativo.</td></tr>`;
+      }
+    }
+
+    function filterByCard(cardId) {
+      pbiState.banco = cardId;
+      document.getElementById('pbiSlicerBanco').value = cardId;
+      renderAnalytics();
+    }
+
     function toggleAllExtrato(checked) {
       document.querySelectorAll('.extrato-cb').forEach(cb => cb.checked = checked);
     }
@@ -1276,7 +2017,6 @@
       const checked = document.querySelectorAll('.extrato-cb:checked');
       if (checked.length === 0) return showToast("Nenhum lançamento selecionado", "info");
 
-      // Usando Set para garantir que pegamos IDs únicos de despesas
       const idsToDelete = new Set(Array.from(checked).map(cb => cb.value));
       const confirmed = await showConfirmModal("Excluir Múltiplos", `Você está prestes a excluir ${idsToDelete.size} despesa(s) inteira(s) e todas as suas parcelas. Confirma?`);
       
@@ -1291,18 +2031,15 @@
       }
     }
 
-    // Exportação Excel
     function exportExtratoExcel() {
       if (!window.currentExtratoExportData || window.currentExtratoExportData.length === 0) {
         return showToast("Nenhum dado para exportar.", "info");
       }
       
-      // \uFEFF força o Excel a reconhecer UTF-8 e acentos corretamente
       let csvContent = '\uFEFFEstabelecimento;Categoria;Forma de Pagto/Cartão;Responsável;Parcela;Data da Compra;Valor\n';
       
       window.currentExtratoExportData.forEach(row => {
         const valorFormatado = row.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        // Envolve strings em aspas e converte ponto-e-vírgula caso existam no nome para evitar quebra do csv
         const rowData = [
           `"${row.estabelecimento.replace(/"/g, '""')}"`,
           `"${row.categoria}"`,
@@ -1336,7 +2073,7 @@
         responsável: document.getElementById('inpResponsavel').value,
         forma_pagamento: document.getElementById('inpFormaPagamento').value,
         cartão: document.getElementById('inpCartao').value,
-        valor_total: document.getElementById('inpValorTotal').value,
+        valor_input: document.getElementById('inpValorTotal').value,
         parcelas: document.getElementById('inpParcelas').value,
         data_compra: document.getElementById('inpDataCompra').value
       };
@@ -1359,7 +2096,10 @@
       if(!exp) return;
       document.getElementById('editExpenseId').value = exp.id;
       document.getElementById('inpEstabelecimento').value = exp.estabelecimento;
-      document.getElementById('inpValorTotal').value = exp.valor_total;
+      
+      const valInput = exp.parcelas > 1 ? (exp.valor_total / exp.parcelas) : exp.valor_total;
+      document.getElementById('inpValorTotal').value = valInput;
+      
       document.getElementById('inpCategoria').value = exp.categoria;
       document.getElementById('inpResponsavel').value = exp.responsável;
       document.getElementById('inpFormaPagamento').value = exp.forma_pagamento;
@@ -1392,7 +2132,7 @@
       }
     }
 
-    function renderAllViews() { populateFormDropdowns(); renderDashboard(); renderExtrato(); renderCadastros(); }
+    function renderAllViews() { populateFormDropdowns(); renderDashboard(); renderExtrato(); renderCadastros(); renderAnalytics(); }
 
     function showToast(msg, type='info') {
       const c = document.getElementById('toastContainer');
@@ -1484,11 +2224,16 @@
 
     function switchTab(t) {
       document.querySelectorAll('.tab-content').forEach(e=>e.classList.add('hidden')); document.getElementById(t).classList.remove('hidden');
-      ['Dashboard','Lancar','Extrato','Cadastros'].forEach(tb=>{
+      ['Dashboard','Lancar','Extrato','Analytics','Cadastros'].forEach(tb=>{
         const dT=document.getElementById(`deskNavTab${tb}`), mT=document.getElementById(`navTab${tb}`);
         if(dT) dT.className=`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 ${`tab${tb}`===t?'bg-emerald-600 text-white':'text-slate-300 hover:text-white hover:bg-slate-800'}`;
-        if(mT) mT.className=`flex flex-col items-center py-1.5 px-2 ${`tab${tb}`===t?'text-emerald-400 font-medium':'text-slate-400 hover:text-slate-200'}`;
+        if(mT) mT.className=`flex flex-col items-center py-1.5 px-1 ${`tab${tb}`===t?'text-emerald-400 font-medium':'text-slate-400 hover:text-slate-200'}`;
       });
+
+      if (t === 'tabAnalytics') {
+        renderAnalytics();
+      }
+
       window.scrollTo({top:0, behavior:'smooth'});
     }
 
@@ -1507,9 +2252,9 @@
       showToast("Gerando imagem...", "info");
       try {
         const h = t.querySelectorAll('.action-column, th:first-child, td:first-child'); 
-        h.forEach(c => c.style.display = 'none'); // Esconde checkboxes e botoes na foto
+        h.forEach(c => c.style.display = 'none');
         const canvas = await html2canvas(t, {backgroundColor: '#020617', scale: 2, useCORS: true, logging: false});
-        h.forEach(c => c.style.display = ''); // Restaura
+        h.forEach(c => c.style.display = '');
 
         const l = document.createElement('a');
         l.download = `extrato-${document.getElementById('extratoFilterMesAno').value}.png`;
