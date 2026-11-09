@@ -85,7 +85,8 @@
 </head>
 <body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden antialiased">
 
-  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+  <!-- Fixed Header with high z-index -->
+  <header class="fixed top-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-md">
     <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
@@ -114,7 +115,8 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-6xl w-full mx-auto p-3 md:p-5 pb-40 md:pb-28 space-y-5">
+  <!-- Added top padding so content is not hidden beneath the fixed header -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-3 md:p-5 pt-20 md:pt-20 pb-40 md:pb-28 space-y-5">
     
     <!-- TAB 1: DASHBOARD -->
     <section id="tabDashboard" class="tab-content space-y-6">
@@ -350,14 +352,15 @@
               <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i>
               Extrato por Responsável
             </h2>
-            <div class="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-              <span>Total Filtrado:</span>
-              <span id="extratoFilteredTotalBadge">R$ 0,00</span>
+            <div class="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2">
+              <span>Total Filtrado: <span id="extratoFilteredTotalBadge">R$ 0,00</span></span>
+              <span class="text-emerald-500/50">|</span>
+              <span>Pago: <span id="extratoPaidTotalBadge">R$ 0,00</span></span>
             </div>
           </div>
           <p class="text-xs text-slate-400 mt-1">Consolidado e acerto individual de contas com status de pagamento</p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:flex sm:items-center">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:flex sm:items-center">
           
           <!-- Multiselect Responsável Extrato -->
           <div class="relative w-full ms-container" id="ms-ext-resp-container">
@@ -365,7 +368,7 @@
               <span id="label-ext-resp" class="truncate max-w-[120px]">Todos Responsáveis</span>
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
-            <div id="ms-ext-resp" class="ms-dropdown hidden absolute z-[60] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            <div id="ms-ext-resp" class="ms-dropdown hidden absolute z-[100] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
             </div>
           </div>
 
@@ -375,11 +378,29 @@
               <span id="label-ext-cartao" class="truncate max-w-[140px]">Todos Cartões/Formas</span>
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </div>
-            <div id="ms-ext-cartao" class="ms-dropdown hidden absolute z-[60] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            <div id="ms-ext-cartao" class="ms-dropdown hidden absolute z-[100] right-0 sm:left-0 top-full mt-1 w-full min-w-[220px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
             </div>
           </div>
 
-          <input type="month" id="extratoFilterMesAno" onchange="renderExtrato()" class="w-full sm:w-auto bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          <!-- Multiselect Ano Extrato -->
+          <div class="relative w-full sm:w-auto ms-container" id="ms-ext-ano-container">
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-ext-ano')">
+              <span id="label-ext-ano" class="truncate max-w-[120px]">Todos os Anos</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-ext-ano" class="ms-dropdown hidden absolute z-[100] right-0 sm:left-0 top-full mt-1 w-full min-w-[180px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            </div>
+          </div>
+
+          <!-- Multiselect Mês Extrato -->
+          <div class="relative w-full sm:w-auto ms-container" id="ms-ext-mes-container">
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-ext-mes')">
+              <span id="label-ext-mes" class="truncate max-w-[120px]">Todos os Meses</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-ext-mes" class="ms-dropdown hidden absolute z-[100] right-0 sm:left-0 top-full mt-1 w-full min-w-[180px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            </div>
+          </div>
         </div>
       </div>
 
@@ -436,7 +457,7 @@
     <section id="tabAnalytics" class="tab-content hidden space-y-4">
       
       <!-- Power BI Header & Interactive Slicers Bar -->
-      <div class="pbi-card p-3 rounded-2xl flex flex-col gap-3">
+      <div class="pbi-card p-3 rounded-2xl flex flex-col gap-3 relative z-40">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
           <div class="flex items-center gap-2">
             <div class="p-1.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
@@ -456,35 +477,52 @@
           </div>
         </div>
 
-        <!-- Slicers Row -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          <div>
+        <!-- Slicers Row with high z-index -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 relative z-50">
+          
+          <div class="relative w-full ms-container" id="ms-pbi-ano-container">
             <label class="block text-[10px] font-semibold text-slate-400 mb-1">Ano</label>
-            <select id="pbiSlicerAno" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
-            </select>
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-pbi-ano')">
+              <span id="label-pbi-ano" class="truncate">Todos os Anos</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-pbi-ano" class="ms-dropdown hidden absolute z-[120] left-0 top-full mt-1 w-full min-w-[150px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
           </div>
-          <div>
+          
+          <div class="relative w-full ms-container" id="ms-pbi-mes-container">
             <label class="block text-[10px] font-semibold text-slate-400 mb-1">Mês</label>
-            <select id="pbiSlicerMes" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
-            </select>
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-pbi-mes')">
+              <span id="label-pbi-mes" class="truncate">Todos os Meses</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-pbi-mes" class="ms-dropdown hidden absolute z-[120] left-0 top-full mt-1 w-full min-w-[150px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
           </div>
-          <div>
+          
+          <div class="relative w-full ms-container" id="ms-pbi-owner-container">
             <label class="block text-[10px] font-semibold text-slate-400 mb-1">Responsável (Owner)</label>
-            <select id="pbiSlicerOwner" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
-            </select>
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-pbi-owner')">
+              <span id="label-pbi-owner" class="truncate">Todos Responsáveis</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-pbi-owner" class="ms-dropdown hidden absolute z-[120] left-0 top-full mt-1 w-full min-w-[150px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
           </div>
-          <div>
+          
+          <div class="relative w-full ms-container" id="ms-pbi-tipo-container">
             <label class="block text-[10px] font-semibold text-slate-400 mb-1">Tipo Despesa</label>
-            <select id="pbiSlicerTipo" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
-              <option value="ALL">Todos os Tipos</option>
-              <option value="CARD">Cartão de Crédito</option>
-              <option value="OTHER">Outros / Fora do Cartão</option>
-            </select>
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-pbi-tipo')">
+              <span id="label-pbi-tipo" class="truncate">Todos os Tipos</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-pbi-tipo" class="ms-dropdown hidden absolute z-[120] left-0 top-full mt-1 w-full min-w-[150px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
           </div>
-          <div class="col-span-2 sm:col-span-1">
+          
+          <div class="relative w-full ms-container col-span-2 sm:col-span-1" id="ms-pbi-banco-container">
             <label class="block text-[10px] font-semibold text-slate-400 mb-1">Banco / Cartão</label>
-            <select id="pbiSlicerBanco" onchange="onPbiSlicerChange()" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 focus:ring-1 focus:ring-teal-500 focus:outline-none">
-            </select>
+            <div class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-1.5 flex justify-between items-center cursor-pointer focus:outline-none" onclick="toggleDropdown('ms-pbi-banco')">
+              <span id="label-pbi-banco" class="truncate">Todos Cartões/Bancos</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400 shrink-0"></i>
+            </div>
+            <div id="ms-pbi-banco" class="ms-dropdown hidden absolute z-[120] right-0 sm:left-0 top-full mt-1 w-full min-w-[150px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
           </div>
         </div>
       </div>
@@ -572,15 +610,20 @@
         </div>
 
         <!-- BOTTOM RIGHT: Extrato Despesas Table Matrix (4 Cols) -->
-        <div class="pbi-card p-3.5 rounded-2xl lg:col-span-4 flex flex-col justify-between">
+        <div id="pbiExtratoCard" class="pbi-card p-3.5 rounded-2xl lg:col-span-4 flex flex-col justify-between transition-all duration-300">
           <div class="flex items-center justify-between border-b border-slate-800 pb-2">
             <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <i data-lucide="file-text" class="w-3.5 h-3.5 text-emerald-400"></i> Extrato Despesas
             </h3>
-            <span id="pbiExtratoCount" class="text-[10px] text-slate-400">0 itens</span>
+            <div class="flex items-center gap-2">
+              <span id="pbiExtratoCount" class="text-[10px] text-slate-400">0 itens</span>
+              <button onclick="toggleExpandPbiExtrato()" title="Expandir/Recolher" class="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-all">
+                <i data-lucide="maximize-2" id="pbiExtratoExpandIcon" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
           </div>
 
-          <div class="overflow-y-auto custom-scrollbar h-64 mt-2">
+          <div id="pbiExtratoTableWrapper" class="overflow-y-auto custom-scrollbar h-64 mt-2">
             <table class="w-full text-left text-[11px]">
               <thead class="sticky top-0 bg-slate-900/90 text-slate-400 border-b border-slate-800">
                 <tr>
@@ -790,15 +833,8 @@
       activeCadastroSubTab: 'cadCartoes'
     };
 
-    // State for Power BI Interactive Analytics Tab
-    let pbiState = {
-      ano: 'ALL',
-      mes: 'ALL',
-      owner: 'ALL',
-      tipo: 'ALL',
-      banco: 'ALL',
-      categoria: 'ALL'
-    };
+    // State for Power BI Interactive Analytics Tab (Categoria preserved)
+    let pbiState = { categoria: 'ALL' };
 
     const pastelPalette = [
       { bg: '#a7f3d0', fill: 'bg-emerald-300', text: 'text-emerald-300', border: 'border-emerald-300' },
@@ -863,10 +899,33 @@
 
     function toggleDropdown(dropdownId) {
       const el = document.getElementById(dropdownId);
+      if(!el) return;
       const isHidden = el.classList.contains('hidden');
       
       document.querySelectorAll('.ms-dropdown').forEach(d => d.classList.add('hidden'));
       if (isHidden) el.classList.remove('hidden');
+    }
+
+    function toggleExpandPbiExtrato() {
+      const card = document.getElementById('pbiExtratoCard');
+      const icon = document.getElementById('pbiExtratoExpandIcon');
+      const wrapper = document.getElementById('pbiExtratoTableWrapper');
+      
+      const isExpanded = card.classList.contains('fixed');
+      if (isExpanded) {
+        card.classList.remove('fixed', 'inset-4', 'z-[100]', 'shadow-2xl', 'p-6');
+        card.classList.add('lg:col-span-4');
+        wrapper.classList.remove('h-full', 'pb-10');
+        wrapper.classList.add('h-64');
+        icon.setAttribute('data-lucide', 'maximize-2');
+      } else {
+        card.classList.add('fixed', 'inset-4', 'z-[100]', 'shadow-2xl', 'p-6');
+        card.classList.remove('lg:col-span-4');
+        wrapper.classList.add('h-full', 'pb-10');
+        wrapper.classList.remove('h-64');
+        icon.setAttribute('data-lucide', 'minimize-2');
+      }
+      lucide.createIcons();
     }
 
     function calculateCompetency(dateStr, paymentMethod, cardId) {
@@ -1045,7 +1104,6 @@
       const now = new Date();
       const val = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       if (document.getElementById('dashFilterMesAno')) document.getElementById('dashFilterMesAno').value = val;
-      if (document.getElementById('extratoFilterMesAno')) document.getElementById('extratoFilterMesAno').value = val;
     }
 
     function buildMultiSelectCheckboxes(dropdownId, labelId, defaultText, optionsList) {
@@ -1115,6 +1173,7 @@
 
       if (dropdownId.includes('dash')) renderDashboard();
       if (dropdownId.includes('ext')) renderExtrato();
+      if (dropdownId.includes('pbi')) renderAnalytics();
     }
 
     function getSelectedValues(dropdownId) {
@@ -1122,7 +1181,8 @@
       if(!container) return ['ALL'];
       const allCb = container.querySelector('input[value="ALL"]');
       if (allCb && allCb.checked) return ['ALL'];
-      return Array.from(container.querySelectorAll('input:not([value="ALL"]):checked')).map(cb => cb.value);
+      const vals = Array.from(container.querySelectorAll('input:not([value="ALL"]):checked')).map(cb => cb.value);
+      return vals.length > 0 ? vals : ['ALL'];
     }
 
     function populateFormDropdowns() {
@@ -1149,7 +1209,34 @@
       buildMultiSelectCheckboxes('ms-dash-cartao', 'label-dash-cartao', 'Todos Cartões/Formas', cartoesList);
       buildMultiSelectCheckboxes('ms-ext-cartao', 'label-ext-cartao', 'Todos Cartões/Formas', cartoesList);
 
-      populatePbiSlicers();
+      // Extrato: Anos e Meses Independentes
+      const setYears = new Set();
+      const now = new Date();
+      setYears.add(now.getFullYear());
+      appState.installments.forEach(p => setYears.add(parseInt(p.ano_competencia, 10)));
+      const yearsList = Array.from(setYears).sort((a,b) => b - a).map(y => ({value: String(y), label: String(y)}));
+      buildMultiSelectCheckboxes('ms-ext-ano', 'label-ext-ano', 'Todos os Anos', yearsList);
+
+      const extMonthsList = [
+        { value: '1', label: 'Janeiro' }, { value: '2', label: 'Fevereiro' }, { value: '3', label: 'Março' },
+        { value: '4', label: 'Abril' }, { value: '5', label: 'Maio' }, { value: '6', label: 'Junho' },
+        { value: '7', label: 'Julho' }, { value: '8', label: 'Agosto' }, { value: '9', label: 'Setembro' },
+        { value: '10', label: 'Outubro' }, { value: '11', label: 'Novembro' }, { value: '12', label: 'Dezembro' }
+      ];
+      buildMultiSelectCheckboxes('ms-ext-mes', 'label-ext-mes', 'Todos os Meses', extMonthsList);
+
+      // Analytics: Slicers as MultiSelect
+      buildMultiSelectCheckboxes('ms-pbi-ano', 'label-pbi-ano', 'Todos os Anos', yearsList);
+      buildMultiSelectCheckboxes('ms-pbi-mes', 'label-pbi-mes', 'Todos os Meses', extMonthsList);
+      buildMultiSelectCheckboxes('ms-pbi-owner', 'label-pbi-owner', 'Todos Responsáveis', respsList);
+      
+      const tipoList = [
+        {value: 'CARD', label: 'Cartão de Crédito'},
+        {value: 'OTHER', label: 'Outros / Fora do Cartão'}
+      ];
+      buildMultiSelectCheckboxes('ms-pbi-tipo', 'label-pbi-tipo', 'Todos os Tipos', tipoList);
+      buildMultiSelectCheckboxes('ms-pbi-banco', 'label-pbi-banco', 'Todos Cartões/Bancos', cartoesList);
+
       updateParcelaPreview();
     }
 
@@ -1296,7 +1383,7 @@
           const pct = ((cat.val / totalMes) * 100).toFixed(1);
           const palette = pastelPalette[idx % pastelPalette.length];
           return `
-            <div onclick="showCategoryDetailModal('${cat.nome.replace(/'/g, "\\'")}', '${cat.id}')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group space-y-2">
+            <div onclick="showCategoryDetailModal('${cat.nome.replace(/'/g, "\'")}', '${cat.id}')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group space-y-2">
               <div class="flex items-center justify-between text-xs">
                 <div class="flex items-center gap-2">
                   <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${palette.bg}"></span>
@@ -1417,14 +1504,14 @@
     function renderExtrato() {
       const selectedResps = getSelectedValues('ms-ext-resp');
       const selectedCartoes = getSelectedValues('ms-ext-cartao');
-      const selectedMesAno = document.getElementById('extratoFilterMesAno').value;
-      if (!selectedMesAno) return;
+      const selectedAnos = getSelectedValues('ms-ext-ano');
+      const selectedMeses = getSelectedValues('ms-ext-mes');
 
-      const [selYear, selMonth] = selectedMesAno.split('-').map(Number);
       document.getElementById('selectAllCheckbox').checked = false;
 
       const activeInstallments = appState.installments.filter(p => {
-        if (parseInt(p.ano_competencia, 10) !== selYear || parseInt(p.mes_competencia, 10) !== selMonth) return false;
+        if (!selectedAnos.includes('ALL') && !selectedAnos.includes(String(p.ano_competencia))) return false;
+        if (!selectedMeses.includes('ALL') && !selectedMeses.includes(String(p.mes_competencia))) return false;
         
         const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
         if (!parentExp) return false;
@@ -1463,6 +1550,8 @@
       const containerSummary = document.getElementById('extratoCardsSummary');
       containerSummary.innerHTML = '';
       
+      let totalPagoGlobal = 0;
+
       Object.keys(respSummaryMap).forEach(respId => {
         if (!selectedResps.includes('ALL') && !selectedResps.includes(respId)) return;
         const rData = respSummaryMap[respId];
@@ -1471,8 +1560,12 @@
           const details = Object.keys(rData.cardBreakdown).map(cName => `${cName}: <span class="font-bold text-teal-300">${formatMoney(rData.cardBreakdown[cName])}</span>`);
           if (rData.totalOutros > 0) details.push(`Fora do Cartão: <span class="font-bold text-indigo-300">${formatMoney(rData.totalOutros)}</span>`);
           
-          const paidKey = `${selectedMesAno}_${respId}`;
+          const paidKey = `${selectedAnos.sort().join('|')}_${selectedMeses.sort().join('|')}_${respId}`;
           const isPaid = !!appState.paidStatusMap[paidKey];
+
+          if (isPaid) {
+            totalPagoGlobal += rData.totalGeral;
+          }
 
           containerSummary.innerHTML += `
             <div class="glass-card p-4 rounded-2xl space-y-3 border-l-4 ${isPaid ? 'border-l-emerald-500 bg-emerald-950/20' : 'border-l-amber-500'} transition-all">
@@ -1486,7 +1579,7 @@
                 
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-extrabold ${isPaid ? 'text-emerald-400' : 'text-slate-100'}">${formatMoney(rData.totalGeral)}</span>
-                  <button onclick="togglePaidStatus('${selectedMesAno}', '${respId}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${isPaid ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}">
+                  <button onclick="togglePaidStatus('${respId}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${isPaid ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}">
                     <i data-lucide="${isPaid ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>
                     <span>${isPaid ? 'Pago' : 'Pendente'}</span>
                   </button>
@@ -1498,6 +1591,9 @@
             </div>`;
         }
       });
+
+      const totalPagoBadge = document.getElementById('extratoPaidTotalBadge');
+      if (totalPagoBadge) totalPagoBadge.innerText = formatMoney(totalPagoGlobal);
 
       const tbody = document.getElementById('extratoTableBody');
       tbody.innerHTML = '';
@@ -1570,99 +1666,49 @@
       lucide.createIcons();
     }
 
-    function togglePaidStatus(mesAnoKey, respId) {
-      const key = `${mesAnoKey}_${respId}`;
+    function togglePaidStatus(respId) {
+      const selectedAnos = getSelectedValues('ms-ext-ano');
+      const selectedMeses = getSelectedValues('ms-ext-mes');
+      const key = `${selectedAnos.sort().join('|')}_${selectedMeses.sort().join('|')}_${respId}`;
       appState.paidStatusMap[key] = !appState.paidStatusMap[key];
       saveLocalData();
       renderExtrato();
       showToast(appState.paidStatusMap[key] ? "Marcado como PAGO" : "Marcado como PENDENTE", "info");
     }
 
-
-    function populatePbiSlicers() {
-      // 1. Populates Years
-      const yearsSet = new Set();
-      const currentYear = new Date().getFullYear();
-      yearsSet.add(currentYear);
-      yearsSet.add(2025);
-      yearsSet.add(2026);
-      appState.installments.forEach(p => yearsSet.add(parseInt(p.ano_competencia, 10)));
-      
-      const sortedYears = Array.from(yearsSet).sort((a,b) => b - a);
-      const selAno = document.getElementById('pbiSlicerAno');
-      if (selAno) {
-        selAno.innerHTML = `<option value="ALL">Todos os Anos</option>` + sortedYears.map(y => `<option value="${y}" ${pbiState.ano == y ? 'selected' : ''}>${y}</option>`).join('');
-      }
-
-      // 2. Populates Months
-      const monthsList = [
-        { v: '1', l: 'Janeiro' }, { v: '2', l: 'Fevereiro' }, { v: '3', l: 'Março' },
-        { v: '4', l: 'Abril' }, { v: '5', l: 'Maio' }, { v: '6', l: 'Junho' },
-        { v: '7', l: 'Julho' }, { v: '8', l: 'Agosto' }, { v: '9', l: 'Setembro' },
-        { v: '10', l: 'Outubro' }, { v: '11', l: 'Novembro' }, { v: '12', l: 'Dezembro' }
-      ];
-      const selMes = document.getElementById('pbiSlicerMes');
-      if (selMes) {
-        selMes.innerHTML = `<option value="ALL">Todos os Meses</option>` + monthsList.map(m => `<option value="${m.v}" ${pbiState.mes == m.v ? 'selected' : ''}>${m.l}</option>`).join('');
-      }
-
-      // 3. Populates Owners
-      const selOwner = document.getElementById('pbiSlicerOwner');
-      if (selOwner) {
-        selOwner.innerHTML = `<option value="ALL">Todos Responsáveis</option>` + appState.responsibles.map(r => `<option value="${r.id}" ${pbiState.owner === r.id ? 'selected' : ''}>${r.nome}</option>`).join('');
-      }
-
-      // 4. Populates Cartões/Bancos
-      const selBanco = document.getElementById('pbiSlicerBanco');
-      if (selBanco) {
-        selBanco.innerHTML = `<option value="ALL">Todos Cartões/Bancos</option>` + 
-          appState.cards.map(c => `<option value="${c.id}" ${pbiState.banco === c.id ? 'selected' : ''}>${c.nome}</option>`).join('') +
-          `<option value="OTHER" ${pbiState.banco === 'OTHER' ? 'selected' : ''}>Fora do Cartão (Pix/Dinheiro)</option>`;
-      }
-    }
-
-    function onPbiSlicerChange() {
-      pbiState.ano = document.getElementById('pbiSlicerAno').value;
-      pbiState.mes = document.getElementById('pbiSlicerMes').value;
-      pbiState.owner = document.getElementById('pbiSlicerOwner').value;
-      pbiState.tipo = document.getElementById('pbiSlicerTipo').value;
-      pbiState.banco = document.getElementById('pbiSlicerBanco').value;
-      renderAnalytics();
-    }
-
     function resetAnalyticsFilters() {
-      pbiState = { ano: 'ALL', mes: 'ALL', owner: 'ALL', tipo: 'ALL', banco: 'ALL', categoria: 'ALL' };
-      populatePbiSlicers();
-      document.getElementById('pbiSlicerTipo').value = 'ALL';
+      pbiState.categoria = 'ALL';
+      populateFormDropdowns();
       renderAnalytics();
       showToast("Filtros do Analytics resetados", "info");
     }
 
     function filterPbiData() {
+      const selAnos = getSelectedValues('ms-pbi-ano');
+      const selMeses = getSelectedValues('ms-pbi-mes');
+      const selOwners = getSelectedValues('ms-pbi-owner');
+      const selTipos = getSelectedValues('ms-pbi-tipo');
+      const selBancos = getSelectedValues('ms-pbi-banco');
+
       return appState.installments.filter(p => {
         const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
         if (!parentExp) return false;
 
-        // Filter Slicer: Ano
-        if (pbiState.ano !== 'ALL' && parseInt(p.ano_competencia, 10) !== parseInt(pbiState.ano, 10)) return false;
-        
-        // Filter Slicer: Mês
-        if (pbiState.mes !== 'ALL' && parseInt(p.mes_competencia, 10) !== parseInt(pbiState.mes, 10)) return false;
+        if (!selAnos.includes('ALL') && !selAnos.includes(String(p.ano_competencia))) return false;
+        if (!selMeses.includes('ALL') && !selMeses.includes(String(p.mes_competencia))) return false;
+        if (!selOwners.includes('ALL') && !selOwners.includes(parentExp.responsável)) return false;
 
-        // Filter Slicer: Owner/Responsável
-        if (pbiState.owner !== 'ALL' && parentExp.responsável !== pbiState.owner) return false;
-
-        // Filter Slicer: Tipo Despesa (CARD vs OTHER)
-        if (pbiState.tipo === 'CARD' && parentExp.forma_pagamento !== 'CARD') return false;
-        if (pbiState.tipo === 'OTHER' && parentExp.forma_pagamento === 'CARD') return false;
-
-        // Filter Slicer: Banco / Cartão
-        if (pbiState.banco !== 'ALL') {
-          if (pbiState.banco === 'OTHER' && parentExp.forma_pagamento === 'CARD') return false;
-          if (pbiState.banco !== 'OTHER' && parentExp.cartão !== pbiState.banco) return false;
+        if (!selTipos.includes('ALL')) {
+          const isCard = parentExp.forma_pagamento === 'CARD';
+          if (isCard && !selTipos.includes('CARD')) return false;
+          if (!isCard && !selTipos.includes('OTHER')) return false;
         }
 
-        // Filter Cross-Filter: Categoria
+        if (!selBancos.includes('ALL')) {
+          const bValue = parentExp.forma_pagamento === 'CARD' ? parentExp.cartão : 'OTHER';
+          if (!selBancos.includes(bValue)) return false;
+        }
+        
         if (pbiState.categoria !== 'ALL' && parentExp.categoria !== pbiState.categoria) return false;
 
         return true;
@@ -1670,7 +1716,6 @@
     }
 
     function renderAnalytics() {
-      populatePbiSlicers();
       const filtered = filterPbiData();
 
       // 1. Calculate KPI Values
@@ -1695,12 +1740,11 @@
         if (pbiChartInstances[key]) pbiChartInstances[key].destroy();
       });
 
-      // Chart Colors matching Power BI dark styling from screenshot (#2b3d4f slate, #c26d93 rose-purple, vibrant pastels)
       const colorCard = '#2b3d4f';
       const colorOutros = '#c26d93';
       const multiPalette = ['#2b3d4f', '#c26d93', '#38bdf8', '#fb7185', '#34d399', '#fbbf24', '#a855f7', '#f97316'];
 
-      // --- CHART 1: Gastos por Mês (Stacked Bar Chart for Jan-Dec) ---
+      // --- CHART 1: Gastos por Mês ---
       const monthsStr = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
       const monthCardData = Array(12).fill(0);
       const monthOutrosData = Array(12).fill(0);
@@ -1740,8 +1784,19 @@
             onClick: (e, elements) => {
               if (elements.length > 0) {
                 const clickedIdx = elements[0].index;
-                pbiState.mes = String(clickedIdx + 1);
-                document.getElementById('pbiSlicerMes').value = pbiState.mes;
+                const clickedMes = String(clickedIdx + 1);
+                
+                const container = document.getElementById('ms-pbi-mes');
+                if(container) {
+                  const allCb = container.querySelector('input[value="ALL"]');
+                  if(allCb) allCb.checked = false;
+                  container.querySelectorAll('input:not([value="ALL"])').forEach(cb => {
+                    cb.checked = (cb.value === clickedMes);
+                  });
+                  const label = document.getElementById('label-pbi-mes');
+                  const checkedOpt = document.querySelector(`#ms-pbi-mes input[value="${clickedMes}"]`);
+                  if(label && checkedOpt) label.innerText = checkedOpt.nextElementSibling.innerText;
+                }
                 renderAnalytics();
               }
             },
@@ -1761,7 +1816,7 @@
         });
       }
 
-      // --- CHART 2: Gastos por Categoria (Horizontal Bar Chart) ---
+      // --- CHART 2: Gastos por Categoria ---
       const catTotalsMap = {};
       filtered.forEach(p => {
         const e = appState.expenses.find(x => x.id === p.despesa_id);
@@ -1814,7 +1869,7 @@
         });
       }
 
-      // --- CHART 3: Valor por Pessoa / Responsável (Horizontal Bar Chart) ---
+      // --- CHART 3: Valor por Pessoa / Responsável ---
       const respTotalsMap = {};
       filtered.forEach(p => {
         const e = appState.expenses.find(x => x.id === p.despesa_id);
@@ -1854,8 +1909,17 @@
                 const clickedRespName = sortedResps[elements[0].index][0];
                 const respObj = appState.responsibles.find(r => r.nome === clickedRespName);
                 if (respObj) {
-                  pbiState.owner = pbiState.owner === respObj.id ? 'ALL' : respObj.id;
-                  document.getElementById('pbiSlicerOwner').value = pbiState.owner;
+                  const container = document.getElementById('ms-pbi-owner');
+                  if(container) {
+                    const allCb = container.querySelector('input[value="ALL"]');
+                    if(allCb) allCb.checked = false;
+                    container.querySelectorAll('input:not([value="ALL"])').forEach(cb => {
+                      cb.checked = (cb.value === respObj.id);
+                    });
+                    const label = document.getElementById('label-pbi-owner');
+                    const checkedOpt = document.querySelector(`#ms-pbi-owner input[value="${respObj.id}"]`);
+                    if(label && checkedOpt) label.innerText = checkedOpt.nextElementSibling.innerText;
+                  }
                   renderAnalytics();
                 }
               }
@@ -1868,7 +1932,7 @@
         });
       }
 
-      // --- CHART 4: % Utilização por Cartão (Doughnut Chart) ---
+      // --- CHART 4: % Utilização por Cartão ---
       const bankTotalsMap = {};
       filtered.forEach(p => {
         const e = appState.expenses.find(x => x.id === p.despesa_id);
@@ -1916,7 +1980,6 @@
       if (totalGeral === 0) {
         summaryContainer.innerHTML = `<p class="text-slate-500 text-[10px] py-1">Nenhum gasto no filtro atual.</p>`;
       } else {
-        // Hierarchy 1: Cartão de Crédito
         if (totalCartao > 0) {
           const pctCard = ((totalCartao / totalGeral) * 100).toFixed(2);
           summaryContainer.innerHTML += `
@@ -1928,18 +1991,17 @@
           appState.cards.forEach(c => {
             const sumCard = bankTotalsMap[c.nome] || 0;
             if (sumCard > 0) {
-              const p = ((sumCard / totalGeral) * 100).toFixed(2);
+              const p_pct = ((sumCard / totalGeral) * 100).toFixed(2);
               summaryContainer.innerHTML += `
                 <div class="pl-4 text-[10px] text-slate-300 flex justify-between hover:bg-slate-800/40 p-0.5 rounded cursor-pointer" onclick="filterByCard('${c.id}')">
                   <span>&bull; ${c.nome}</span>
-                  <span class="font-mono">${formatMoney(sumCard)} (${p}%)</span>
+                  <span class="font-mono">${formatMoney(sumCard)} (${p_pct}%)</span>
                 </div>
               `;
             }
           });
         }
 
-        // Hierarchy 2: Fora do Cartão / Despesa Fixa
         if (totalOutros > 0) {
           const pctOutros = ((totalOutros / totalGeral) * 100).toFixed(2);
           summaryContainer.innerHTML += `
@@ -1976,7 +2038,6 @@
       Object.keys(extratoGrouped).sort().forEach(bName => {
         const groupSum = extratoGrouped[bName].reduce((s, item) => s + (parseFloat(item.p.valor_parcela) || 0), 0);
         
-        // Group Header
         extratoBody.innerHTML += `
           <tr class="bg-slate-900/90 font-bold text-slate-300">
             <td class="p-1.5 font-bold text-teal-300">&boxvr; ${bName}</td>
@@ -1984,7 +2045,6 @@
           </tr>
         `;
 
-        // Item Sub-rows
         extratoGrouped[bName].forEach(({ p, e }) => {
           const val = parseFloat(p.valor_parcela) || 0;
           extratoBody.innerHTML += `
@@ -2004,8 +2064,17 @@
     }
 
     function filterByCard(cardId) {
-      pbiState.banco = cardId;
-      document.getElementById('pbiSlicerBanco').value = cardId;
+      const container = document.getElementById('ms-pbi-banco');
+      if(container) {
+        const allCb = container.querySelector('input[value="ALL"]');
+        if(allCb) allCb.checked = false;
+        container.querySelectorAll('input:not([value="ALL"])').forEach(cb => {
+          cb.checked = (cb.value === cardId);
+        });
+        const label = document.getElementById('label-pbi-banco');
+        const checkedOpt = document.querySelector(`#ms-pbi-banco input[value="${cardId}"]`);
+        if(label && checkedOpt) label.innerText = checkedOpt.nextElementSibling.innerText;
+      }
       renderAnalytics();
     }
 
@@ -2055,7 +2124,9 @@
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const filterMes = document.getElementById('extratoFilterMesAno').value;
+      
+      const mesVals = getSelectedValues('ms-ext-mes');
+      const filterMes = mesVals.includes('ALL') ? 'Todos' : mesVals.join('_');
       
       link.setAttribute("href", url);
       link.setAttribute("download", `Extrato_${filterMes}.csv`);
@@ -2257,7 +2328,7 @@
         h.forEach(c => c.style.display = '');
 
         const l = document.createElement('a');
-        l.download = `extrato-${document.getElementById('extratoFilterMesAno').value}.png`;
+        l.download = `extrato-filtrado.png`;
         l.href = canvas.toDataURL('image/png'); l.click(); showToast("Salvo!", "success");
       } catch(e) {
         showToast("Erro ao gerar imagem.", "error");
