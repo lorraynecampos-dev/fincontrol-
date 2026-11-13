@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FinControl - Google Sheets Sync & Analytics</title>
+  <title>FinControl - Supabase Sync & Analytics</title>
   
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/dist/umd/supabase.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -96,15 +97,15 @@
           <h1 class="font-bold text-lg leading-none text-slate-100">FinControl</h1>
           <div class="flex items-center gap-1.5 mt-1">
             <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-            <span id="syncStatusText" class="text-xs text-slate-400 font-medium">Google Sheets Conectado</span>
+            <span id="syncStatusText" class="text-xs text-slate-400 font-medium">Aguardando conexão</span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center space-x-2">
-        <button onclick="openSyncModal()" title="Configurar Google Sheet" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 flex items-center gap-2 text-xs font-medium">
+        <button onclick="openSyncModal()" title="Conectar ao Supabase" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 flex items-center gap-2 text-xs font-medium">
           <i data-lucide="sheet" class="w-4 h-4 text-emerald-400"></i>
-          <span class="hidden sm:inline">Google Sheet</span>
+          <span class="hidden sm:inline">Supabase</span>
         </button>
         <button onclick="openNewExpenseForm()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-1.5">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -766,7 +767,7 @@
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2">
           <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-400"></i>
-          <h3 class="text-base font-bold text-white">Integração Google Sheets</h3>
+          <h3 class="text-base font-bold text-white">Conexão Supabase</h3>
         </div>
         <button onclick="closeModal('modalSync')" class="text-slate-400 hover:text-white p-1">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -774,16 +775,23 @@
       </div>
 
       <div class="space-y-3 text-xs text-slate-300">
-        <p>Este aplicativo utiliza o <strong>Google Sheets</strong> como banco de dados principal.</p>
+        <p>Entre com seu e-mail autorizado para acessar suas finanças no <strong>Supabase</strong>.</p>
         <div>
-          <label class="block font-semibold text-slate-200 mb-1">URL do Apps Script</label>
-          <input type="url" id="inpWebAppUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <label class="block font-semibold text-slate-200 mb-1" for="inpSyncEmail">E-mail</label>
+          <input type="email" id="inpSyncEmail" autocomplete="username" value="lorrayne.campos.ia@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white">
         </div>
+        <div>
+          <label class="block font-semibold text-slate-200 mb-1" for="inpSyncPassword">Senha</label>
+          <input type="password" id="inpSyncPassword" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white">
+        </div>
+        <p>No primeiro acesso, escolha uma senha e clique em Criar acesso. Confirme o e-mail recebido e depois entre.</p>
       </div>
 
       <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-        <button onclick="saveSyncSettings()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all">
-          Salvar & Testar Conexão
+        <button onclick="saveSyncSettings(true)" class="text-xs text-emerald-400">Criar acesso</button>
+        <button onclick="signOutSupabase()" class="text-xs text-slate-400">Sair</button>
+        <button id="btnSyncLogin" onclick="saveSyncSettings()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all">
+          Entrar
         </button>
       </div>
     </div>
@@ -822,13 +830,12 @@
 
   <script>
     let appState = {
-      webAppUrl: localStorage.getItem('fincontrol_sheet_url') || '',
       cards: [],
       responsibles: [],
       categories: [],
       expenses: [],
       installments: [],
-      paidStatusMap: JSON.parse(localStorage.getItem('fincontrol_paid_status') || '{}'),
+      paidStatusMap: {},
       activeTab: 'tabDashboard',
       activeCadastroSubTab: 'cadCartoes'
     };
@@ -874,17 +881,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setDefaultMonthPicker();
-      loadLocalData();
-
-      if (appState.webAppUrl) {
-        await fetchFromGoogleSheets();
-      } else {
-        updateSyncBadge('OFFLINE (Local)');
-      }
-
-      if (appState.expenses.length === 0) {
-        seedSampleData();
-      }
+      await initializeSupabase();
 
       populateFormDropdowns();
       toggleCartaoSelect();
@@ -954,97 +951,129 @@
       return `${monthsStr[monthZeroIdx]}/${shortYear}`;
     }
 
-    function loadLocalData() {
-      const stored = localStorage.getItem('fincontrol_app_data');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          appState.cards = parsed.cards || defaultData.cards;
-          appState.responsibles = parsed.responsibles || defaultData.responsibles;
-          appState.categories = parsed.categories || defaultData.categories;
-          appState.expenses = parsed.expenses || [];
-          appState.installments = parsed.installments || [];
-        } catch (e) {
-          console.error("Error parsing local data", e);
-        }
-      } else {
-        appState.cards = [...defaultData.cards];
-        appState.responsibles = [...defaultData.responsibles];
-        appState.categories = [...defaultData.categories];
-      }
-    }
-
     function saveLocalData() {
-      localStorage.setItem('fincontrol_app_data', JSON.stringify({
+      localStorage.setItem('fincontrol_supabase_data', JSON.stringify({
         cards: appState.cards, responsibles: appState.responsibles,
         categories: appState.categories, expenses: appState.expenses,
         installments: appState.installments
       }));
-      localStorage.setItem('fincontrol_paid_status', JSON.stringify(appState.paidStatusMap));
+      localStorage.setItem('fincontrol_supabase_paid_status', JSON.stringify(appState.paidStatusMap));
     }
 
-    function normalizeWebAppUrl(url) {
-      if (!url) return '';
-      let cleanUrl = url.trim();
-      if (!cleanUrl) return '';
-      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-        if (cleanUrl.includes('script.google.com')) cleanUrl = 'https://' + cleanUrl;
-        else cleanUrl = `https://script.google.com/macros/s/${cleanUrl}/exec`;
-      }
-      return cleanUrl;
+    const SUPABASE_URL = 'https://tvpamenvqbgkixuaehoy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GSQVhohAE5haspLnbGM5mA_XHpE7uBZ';
+    const financeClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let remoteVersion = null;
+    let syncQueue = Promise.resolve();
+    let syncBlocked = false;
+    let remoteReady = false;
+    const dataKeys = ['cards', 'responsibles', 'categories', 'expenses', 'installments'];
+
+    function clearFinanceState() {
+      dataKeys.forEach(key => appState[key] = []);
+      appState.paidStatusMap = {};
+      remoteVersion = null;
+      remoteReady = false;
     }
 
-    async function syncToGoogleSheets() {
+    async function initializeSupabase() {
+      clearFinanceState();
+      const { data, error } = await financeClient.auth.getSession();
+      if (error) showToast(error.message, 'error');
+      if (data?.session) await fetchFromSupabase();
+      else { updateSyncBadge('Entre no Supabase'); openSyncModal(); }
+    }
+
+    async function syncToSupabase() {
       saveLocalData();
-      if (!appState.webAppUrl) return;
-      const normalizedUrl = normalizeWebAppUrl(appState.webAppUrl);
-      if (!normalizedUrl) return;
-
-      updateSyncBadge('Sincronizando...');
-      try {
-        const res = await fetch(normalizedUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'syncAll', cards: appState.cards, responsibles: appState.responsibles,
-            categories: appState.categories, expenses: appState.expenses, installments: appState.installments
-          })
-        });
-
-        const data = await res.json();
-        if (data.status === 'success' || data.status === 'ok') updateSyncBadge('Google Sheets Conectado');
-        else updateSyncBadge('Erro na resposta');
-      } catch (err) {
-        updateSyncBadge('Erro ao sincronizar');
+      if (!remoteReady || syncBlocked) {
+        showToast('Entre e carregue os dados do Supabase antes de salvar. Alterações locais ainda não foram enviadas.', 'error');
+        return false;
       }
+      const payload = JSON.parse(JSON.stringify(Object.fromEntries(
+        [...dataKeys, 'paidStatusMap'].map(key => [key, appState[key]])
+      )));
+      syncQueue = syncQueue.then(async () => {
+        if (syncBlocked) return false;
+        updateSyncBadge('Sincronizando...');
+        try {
+          const { data, error } = await financeClient.rpc('fincontrol_sync', { payload, expected_version: remoteVersion });
+          if (error) throw error;
+          remoteVersion = data;
+          updateSyncBadge('Supabase Conectado');
+          return true;
+        } catch (error) {
+          syncBlocked = true;
+          updateSyncBadge('Erro ao sincronizar');
+          showToast(`${error.message} Suas alterações permanecem neste navegador.`, 'error');
+          return false;
+        }
+      });
+      return syncQueue;
     }
 
-    async function fetchFromGoogleSheets() {
-      if (!appState.webAppUrl) return;
-      const normalizedUrl = normalizeWebAppUrl(appState.webAppUrl);
-      if (!normalizedUrl) return;
-
+    async function fetchFromSupabase() {
+      await syncQueue;
       updateSyncBadge('Carregando...');
       try {
-        const delimiter = normalizedUrl.includes('?') ? '&' : '?';
-        const res = await fetch(`${normalizedUrl}${delimiter}action=readAll&t=${Date.now()}`);
-        const data = await res.json();
-
-        if (data && !data.error) {
-          if (Array.isArray(data.cards) && data.cards.length > 0) appState.cards = data.cards;
-          if (Array.isArray(data.responsibles) && data.responsibles.length > 0) appState.responsibles = data.responsibles;
-          if (Array.isArray(data.categories) && data.categories.length > 0) appState.categories = data.categories;
-          if (Array.isArray(data.expenses)) appState.expenses = data.expenses;
-          if (Array.isArray(data.installments)) appState.installments = data.installments;
-
-          saveLocalData(); updateSyncBadge('Google Sheets Conectado'); renderAllViews();
-        } else {
-          updateSyncBadge('Erro no Endpoint');
-        }
-      } catch (e) {
-        updateSyncBadge('Offline / Falha na Rede');
+        const { data, error } = await financeClient.rpc('fincontrol_read');
+        if (error) throw error;
+        if (!data || !dataKeys.every(key => Array.isArray(data[key]))) throw new Error('Resposta inválida do Supabase');
+        dataKeys.forEach(key => appState[key] = data[key]);
+        // Importa marcações antigas deste navegador apenas no primeiro acesso.
+        const legacyPaid = localStorage.getItem('fincontrol_paid_migrated') ? {} : JSON.parse(localStorage.getItem('fincontrol_paid_status') || '{}');
+        appState.paidStatusMap = { ...legacyPaid, ...data.paidStatusMap };
+        remoteVersion = data.version;
+        remoteReady = true;
+        syncBlocked = false;
+        saveLocalData();
+        updateSyncBadge('Supabase Conectado');
+        renderAllViews();
+        if (Object.keys(legacyPaid).some(key => !(key in data.paidStatusMap))) {
+          if (await syncToSupabase()) localStorage.setItem('fincontrol_paid_migrated', 'true');
+        } else localStorage.setItem('fincontrol_paid_migrated', 'true');
+        return true;
+      } catch (error) {
+        remoteReady = false;
+        updateSyncBadge('Falha na conexão');
+        showToast(error.message, 'error');
+        return false;
       }
     }
+
+    function openSyncModal() { openModal('modalSync'); }
+    async function saveSyncSettings(createAccount = false) {
+      const email = document.getElementById('inpSyncEmail').value.trim();
+      const passwordField = document.getElementById('inpSyncPassword');
+      const password = passwordField.value;
+      if (!email || !password) { showToast('Informe e-mail e senha.', 'error'); return; }
+      const button = document.getElementById('btnSyncLogin');
+      button.disabled = true;
+      try {
+        const { data, error } = createAccount
+          ? await financeClient.auth.signUp({ email, password })
+          : await financeClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        passwordField.value = '';
+        if (!data.session) {
+          showToast('Confirme seu e-mail pelo link recebido e depois clique em Entrar.', 'info');
+          return;
+        }
+        if (await fetchFromSupabase()) closeModal('modalSync');
+      } catch (error) { showToast(error.message, 'error'); }
+      finally { button.disabled = false; }
+    }
+    async function signOutSupabase() {
+      await syncQueue;
+      const { error } = await financeClient.auth.signOut();
+      if (error) { showToast(error.message, 'error'); return; }
+      clearFinanceState();
+      localStorage.removeItem('fincontrol_supabase_data');
+      document.getElementById('inpSyncPassword').value = '';
+      renderAllViews();
+      updateSyncBadge('Entre no Supabase');
+    }
+
 
     function updateSyncBadge(statusText) {
       const dot = document.getElementById('syncStatusDot');
@@ -1097,7 +1126,7 @@
         curM += 1; if (curM > 11) { curM = 0; curY += 1; }
       }
 
-      if (shouldSync) { syncToGoogleSheets(); renderAllViews(); }
+      if (shouldSync) { syncToSupabase(); renderAllViews(); }
     }
 
     function setDefaultMonthPicker() {
@@ -1666,14 +1695,14 @@
       lucide.createIcons();
     }
 
-    function togglePaidStatus(respId) {
+    async function togglePaidStatus(respId) {
       const selectedAnos = getSelectedValues('ms-ext-ano');
       const selectedMeses = getSelectedValues('ms-ext-mes');
       const key = `${selectedAnos.sort().join('|')}_${selectedMeses.sort().join('|')}_${respId}`;
       appState.paidStatusMap[key] = !appState.paidStatusMap[key];
-      saveLocalData();
+      const saved = syncToSupabase();
       renderExtrato();
-      showToast(appState.paidStatusMap[key] ? "Marcado como PAGO" : "Marcado como PENDENTE", "info");
+      if (await saved) showToast(appState.paidStatusMap[key] ? "Marcado como PAGO" : "Marcado como PENDENTE", "info");
     }
 
     function resetAnalyticsFilters() {
@@ -2094,7 +2123,7 @@
           appState.expenses = appState.expenses.filter(e => e.id !== id);
           appState.installments = appState.installments.filter(inst => inst.despesa_id !== id);
         });
-        syncToGoogleSheets();
+        syncToSupabase();
         renderAllViews();
         showToast("Lançamentos selecionados foram removidos.", "success");
       }
@@ -2199,7 +2228,7 @@
       if (await showConfirmModal("Excluir", "Deseja excluir esta despesa e suas parcelas?")) {
         appState.expenses = appState.expenses.filter(e => e.id !== id);
         appState.installments = appState.installments.filter(p => p.despesa_id !== id);
-        syncToGoogleSheets(); renderAllViews(); showToast("Removido", "info");
+        syncToSupabase(); renderAllViews(); showToast("Removido", "info");
       }
     }
 
@@ -2285,13 +2314,13 @@
       lucide.createIcons();
     }
 
-    function handleSaveCartao(e) { e.preventDefault(); appState.cards.push({ id: 'c_'+Date.now(), nome: document.getElementById('cadCartaoNome').value.trim(), dia_fechamento: parseInt(document.getElementById('cadCartaoFechamento').value,10), dia_vencimento: parseInt(document.getElementById('cadCartaoVencimento').value,10), ativo: 'SIM' }); resetCartaoForm(); syncToGoogleSheets(); renderAllViews(); showToast("Salvo", "success"); }
+    function handleSaveCartao(e) { e.preventDefault(); appState.cards.push({ id: 'c_'+Date.now(), nome: document.getElementById('cadCartaoNome').value.trim(), dia_fechamento: parseInt(document.getElementById('cadCartaoFechamento').value,10), dia_vencimento: parseInt(document.getElementById('cadCartaoVencimento').value,10), ativo: 'SIM' }); resetCartaoForm(); syncToSupabase(); renderAllViews(); showToast("Salvo", "success"); }
     function resetCartaoForm() { ['Nome','Fechamento','Vencimento'].forEach(i => document.getElementById(`cadCartao${i}`).value = ''); }
-    async function deleteCartao(id) { if(await showConfirmModal("Excluir", "Remover cartão?")) { appState.cards=appState.cards.filter(c=>c.id!==id); syncToGoogleSheets(); renderAllViews(); } }
-    function handleSaveResponsavel(e) { e.preventDefault(); appState.responsibles.push({id:'r_'+Date.now(), nome:document.getElementById('cadRespNome').value.trim(), ativo:'SIM'}); document.getElementById('cadRespNome').value=''; syncToGoogleSheets(); renderAllViews(); }
-    async function deleteResponsavel(id) { if(await showConfirmModal("Excluir", "Remover responsável?")) { appState.responsibles=appState.responsibles.filter(r=>r.id!==id); syncToGoogleSheets(); renderAllViews(); } }
-    function handleSaveCategoria(e) { e.preventDefault(); appState.categories.push({id:'cat_'+Date.now(), nome:document.getElementById('cadCatNome').value.trim(), ativo:'SIM'}); document.getElementById('cadCatNome').value=''; syncToGoogleSheets(); renderAllViews(); }
-    async function deleteCategoria(id) { if(await showConfirmModal("Excluir", "Remover categoria?")) { appState.categories=appState.categories.filter(c=>c.id!==id); syncToGoogleSheets(); renderAllViews(); } }
+    async function deleteCartao(id) { if(await showConfirmModal("Excluir", "Remover cartão?")) { appState.cards=appState.cards.filter(c=>c.id!==id); syncToSupabase(); renderAllViews(); } }
+    function handleSaveResponsavel(e) { e.preventDefault(); appState.responsibles.push({id:'r_'+Date.now(), nome:document.getElementById('cadRespNome').value.trim(), ativo:'SIM'}); document.getElementById('cadRespNome').value=''; syncToSupabase(); renderAllViews(); }
+    async function deleteResponsavel(id) { if(await showConfirmModal("Excluir", "Remover responsável?")) { appState.responsibles=appState.responsibles.filter(r=>r.id!==id); syncToSupabase(); renderAllViews(); } }
+    function handleSaveCategoria(e) { e.preventDefault(); appState.categories.push({id:'cat_'+Date.now(), nome:document.getElementById('cadCatNome').value.trim(), ativo:'SIM'}); document.getElementById('cadCatNome').value=''; syncToSupabase(); renderAllViews(); }
+    async function deleteCategoria(id) { if(await showConfirmModal("Excluir", "Remover categoria?")) { appState.categories=appState.categories.filter(c=>c.id!==id); syncToSupabase(); renderAllViews(); } }
 
     function switchTab(t) {
       document.querySelectorAll('.tab-content').forEach(e=>e.classList.add('hidden')); document.getElementById(t).classList.remove('hidden');
@@ -2310,12 +2339,6 @@
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-    function openSyncModal() { document.getElementById('inpWebAppUrl').value=appState.webAppUrl; openModal('modalSync'); }
-    function saveSyncSettings() {
-      const url = normalizeWebAppUrl(document.getElementById('inpWebAppUrl').value);
-      appState.webAppUrl = url; localStorage.setItem('fincontrol_sheet_url', url);
-      closeModal('modalSync'); url ? fetchFromGoogleSheets() : updateSyncBadge('OFFLINE (Local)');
-    }
     function formatMoney(val) { return (parseFloat(val)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 
     async function downloadExtratoImage() {
