@@ -1712,7 +1712,7 @@
       showToast("Filtros do Analytics resetados", "info");
     }
 
-    function filterPbiData() {
+    function filterPbiData(expensesById = new Map(appState.expenses.map(e => [e.id, e]))) {
       const selAnos = getSelectedValues('ms-pbi-ano');
       const selMeses = getSelectedValues('ms-pbi-mes');
       const selOwners = getSelectedValues('ms-pbi-owner');
@@ -1720,7 +1720,7 @@
       const selBancos = getSelectedValues('ms-pbi-banco');
 
       return appState.installments.filter(p => {
-        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        const parentExp = expensesById.get(p.despesa_id);
         if (!parentExp) return false;
 
         if (!selAnos.includes('ALL') && !selAnos.includes(String(p.ano_competencia))) return false;
@@ -1745,14 +1745,20 @@
     }
 
     function renderAnalytics() {
-      const filtered = filterPbiData();
+      // Build Analytics only when visible; switching to the tab renders fresh data.
+      if (document.getElementById('tabAnalytics').classList.contains('hidden')) return;
+      const expensesById = new Map(appState.expenses.map(e => [e.id, e]));
+      const categoriesById = new Map(appState.categories.map(c => [c.id, c]));
+      const responsiblesById = new Map(appState.responsibles.map(r => [r.id, r]));
+      const cardsById = new Map(appState.cards.map(c => [c.id, c]));
+      const filtered = filterPbiData(expensesById);
 
       // 1. Calculate KPI Values
       let totalGeral = 0, totalCartao = 0, totalOutros = 0;
       filtered.forEach(p => {
         const val = parseFloat(p.valor_parcela) || 0;
         totalGeral += val;
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e) {
           if (e.forma_pagamento === 'CARD') totalCartao += val;
           else totalOutros += val;
@@ -1782,7 +1788,7 @@
         const mIdx = parseInt(p.mes_competencia, 10) - 1;
         if (mIdx >= 0 && mIdx < 12) {
           const val = parseFloat(p.valor_parcela) || 0;
-          const e = appState.expenses.find(x => x.id === p.despesa_id);
+          const e = expensesById.get(p.despesa_id);
           if (e && e.forma_pagamento === 'CARD') monthCardData[mIdx] += val;
           else monthOutrosData[mIdx] += val;
         }
@@ -1848,9 +1854,9 @@
       // --- CHART 2: Gastos por Categoria ---
       const catTotalsMap = {};
       filtered.forEach(p => {
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e) {
-          const catObj = appState.categories.find(c => c.id === e.categoria);
+          const catObj = categoriesById.get(e.categoria);
           const name = catObj ? catObj.nome : 'Outros';
           const catId = catObj ? catObj.id : 'ALL';
           if (!catTotalsMap[name]) catTotalsMap[name] = { id: catId, val: 0 };
@@ -1901,9 +1907,9 @@
       // --- CHART 3: Valor por Pessoa / Responsável ---
       const respTotalsMap = {};
       filtered.forEach(p => {
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e) {
-          const respObj = appState.responsibles.find(r => r.id === e.responsável);
+          const respObj = responsiblesById.get(e.responsável);
           const name = respObj ? respObj.nome : 'Outros';
           const rId = respObj ? respObj.id : 'ALL';
           if (!respTotalsMap[name]) respTotalsMap[name] = { id: rId, val: 0 };
@@ -1964,9 +1970,9 @@
       // --- CHART 4: % Utilização por Cartão ---
       const bankTotalsMap = {};
       filtered.forEach(p => {
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e) {
-          const bName = e.forma_pagamento === 'CARD' ? ((appState.cards.find(c => c.id === e.cartão) || {}).nome || 'Cartão') : 'Fora do Cartão';
+          const bName = e.forma_pagamento === 'CARD' ? ((cardsById.get(e.cartão) || {}).nome || 'Cartão') : 'Fora do Cartão';
           bankTotalsMap[bName] = (bankTotalsMap[bName] || 0) + (parseFloat(p.valor_parcela) || 0);
         }
       });
@@ -2004,14 +2010,14 @@
 
       // 3. Render Summary Matrix Hierarchy Table
       const summaryContainer = document.getElementById('pbiSummaryMatrix');
-      summaryContainer.innerHTML = '';
+      let summaryHtml = '';
 
       if (totalGeral === 0) {
-        summaryContainer.innerHTML = `<p class="text-slate-500 text-[10px] py-1">Nenhum gasto no filtro atual.</p>`;
+        summaryHtml = `<p class="text-slate-500 text-[10px] py-1">Nenhum gasto no filtro atual.</p>`;
       } else {
         if (totalCartao > 0) {
           const pctCard = ((totalCartao / totalGeral) * 100).toFixed(2);
-          summaryContainer.innerHTML += `
+          summaryHtml += `
             <div class="font-bold text-slate-200 flex justify-between bg-slate-900/60 p-1 rounded">
               <span>&boxvr; Cartão de Crédito</span>
               <span class="text-emerald-400">${formatMoney(totalCartao)} <span class="text-[9px] text-slate-400 font-normal">(${pctCard}%)</span></span>
@@ -2021,7 +2027,7 @@
             const sumCard = bankTotalsMap[c.nome] || 0;
             if (sumCard > 0) {
               const p_pct = ((sumCard / totalGeral) * 100).toFixed(2);
-              summaryContainer.innerHTML += `
+              summaryHtml += `
                 <div class="pl-4 text-[10px] text-slate-300 flex justify-between hover:bg-slate-800/40 p-0.5 rounded cursor-pointer" onclick="filterByCard('${c.id}')">
                   <span>&bull; ${c.nome}</span>
                   <span class="font-mono">${formatMoney(sumCard)} (${p_pct}%)</span>
@@ -2033,7 +2039,7 @@
 
         if (totalOutros > 0) {
           const pctOutros = ((totalOutros / totalGeral) * 100).toFixed(2);
-          summaryContainer.innerHTML += `
+          summaryHtml += `
             <div class="font-bold text-slate-200 flex justify-between bg-slate-900/60 p-1 rounded mt-1">
               <span>&boxvr; Outros / Pix / Débito</span>
               <span class="text-rose-300">${formatMoney(totalOutros)} <span class="text-[9px] text-slate-400 font-normal">(${pctOutros}%)</span></span>
@@ -2041,7 +2047,7 @@
           `;
         }
 
-        summaryContainer.innerHTML += `
+        summaryHtml += `
           <div class="font-bold text-slate-100 flex justify-between border-t border-slate-800 pt-1 mt-1">
             <span>Total</span>
             <span class="text-emerald-400">${formatMoney(totalGeral)} (100.00%)</span>
@@ -2049,16 +2055,18 @@
         `;
       }
 
+      summaryContainer.innerHTML = summaryHtml;
+
       // 4. Render Extrato Despesas Matrix Table
       const extratoBody = document.getElementById('pbiExtratoTableBody');
-      extratoBody.innerHTML = '';
+      let extratoHtml = '';
       document.getElementById('pbiExtratoCount').innerText = `${filtered.length} itens`;
 
       const extratoGrouped = {};
       filtered.forEach(p => {
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e) {
-          const bName = e.forma_pagamento === 'CARD' ? ((appState.cards.find(c => c.id === e.cartão) || {}).nome || 'Cartão') : 'Outros / Pix';
+          const bName = e.forma_pagamento === 'CARD' ? ((cardsById.get(e.cartão) || {}).nome || 'Cartão') : 'Outros / Pix';
           if (!extratoGrouped[bName]) extratoGrouped[bName] = [];
           extratoGrouped[bName].push({ p, e });
         }
@@ -2067,7 +2075,7 @@
       Object.keys(extratoGrouped).sort().forEach(bName => {
         const groupSum = extratoGrouped[bName].reduce((s, item) => s + (parseFloat(item.p.valor_parcela) || 0), 0);
         
-        extratoBody.innerHTML += `
+        extratoHtml += `
           <tr class="bg-slate-900/90 font-bold text-slate-300">
             <td class="p-1.5 font-bold text-teal-300">&boxvr; ${bName}</td>
             <td class="p-1.5 text-right text-emerald-400 font-bold">${formatMoney(groupSum)}</td>
@@ -2076,7 +2084,7 @@
 
         extratoGrouped[bName].forEach(({ p, e }) => {
           const val = parseFloat(p.valor_parcela) || 0;
-          extratoBody.innerHTML += `
+          extratoHtml += `
             <tr class="hover:bg-slate-800/40 text-slate-300 text-[10px]">
               <td class="p-1.5 pl-4 truncate max-w-[140px]" title="${e.estabelecimento}">
                 ${e.estabelecimento} <span class="text-slate-500">(${p.parcela_atual}/${p.total_parcelas})</span>
@@ -2088,8 +2096,9 @@
       });
 
       if (filtered.length === 0) {
-        extratoBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-500 text-[11px]">Nenhum lançamento para o filtro ativo.</td></tr>`;
+        extratoHtml = `<tr><td colspan="2" class="p-4 text-center text-slate-500 text-[11px]">Nenhum lançamento para o filtro ativo.</td></tr>`;
       }
+      extratoBody.innerHTML = extratoHtml;
     }
 
     function filterByCard(cardId) {
