@@ -881,11 +881,9 @@
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setDefaultMonthPicker();
-      await initializeSupabase();
-
-      populateFormDropdowns();
+      const loaded = await initializeSupabase();
       toggleCartaoSelect();
-      renderAllViews();
+      if (!loaded) renderAllViews();
     });
 
     document.addEventListener('click', (e) => {
@@ -980,7 +978,7 @@
       clearFinanceState();
       const { data, error } = await financeClient.auth.getSession();
       if (error) showToast(error.message, 'error');
-      if (data?.session) await fetchFromSupabase();
+      if (data?.session) return await fetchFromSupabase();
       else { updateSyncBadge('Entre no Supabase'); openSyncModal(); }
     }
 
@@ -1531,6 +1529,10 @@
     }
 
     function renderExtrato() {
+      const expensesById = new Map(appState.expenses.map(e => [e.id, e]));
+      const cardsById = new Map(appState.cards.map(c => [c.id, c]));
+      const categoriesById = new Map(appState.categories.map(c => [c.id, c]));
+      const responsiblesById = new Map(appState.responsibles.map(r => [r.id, r]));
       const selectedResps = getSelectedValues('ms-ext-resp');
       const selectedCartoes = getSelectedValues('ms-ext-cartao');
       const selectedAnos = getSelectedValues('ms-ext-ano');
@@ -1542,7 +1544,7 @@
         if (!selectedAnos.includes('ALL') && !selectedAnos.includes(String(p.ano_competencia))) return false;
         if (!selectedMeses.includes('ALL') && !selectedMeses.includes(String(p.mes_competencia))) return false;
         
-        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
+        const parentExp = expensesById.get(p.despesa_id);
         if (!parentExp) return false;
 
         if (!selectedResps.includes('ALL') && !selectedResps.includes(parentExp.responsável)) return false;
@@ -1563,12 +1565,12 @@
       appState.responsibles.forEach(r => respSummaryMap[r.id] = { nome: r.nome, cardBreakdown: {}, totalOutros: 0, totalGeral: 0 });
 
       activeInstallments.forEach(p => {
-        const e = appState.expenses.find(x => x.id === p.despesa_id);
+        const e = expensesById.get(p.despesa_id);
         if (e && respSummaryMap[e.responsável]) {
           const val = parseFloat(p.valor_parcela) || 0;
           respSummaryMap[e.responsável].totalGeral += val;
           if (e.forma_pagamento === 'CARD') {
-            const cName = (appState.cards.find(c => c.id === e.cartão) || {}).nome || 'Cartão';
+            const cName = (cardsById.get(e.cartão) || {}).nome || 'Cartão';
             respSummaryMap[e.responsável].cardBreakdown[cName] = (respSummaryMap[e.responsável].cardBreakdown[cName] || 0) + val;
           } else {
             respSummaryMap[e.responsável].totalOutros += val;
@@ -1577,7 +1579,7 @@
       });
 
       const containerSummary = document.getElementById('extratoCardsSummary');
-      containerSummary.innerHTML = '';
+      let summaryHtml = '';
       
       let totalPagoGlobal = 0;
 
@@ -1596,7 +1598,7 @@
             totalPagoGlobal += rData.totalGeral;
           }
 
-          containerSummary.innerHTML += `
+          summaryHtml += `
             <div class="glass-card p-4 rounded-2xl space-y-3 border-l-4 ${isPaid ? 'border-l-emerald-500 bg-emerald-950/20' : 'border-l-amber-500'} transition-all">
               <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
                 <div class="flex items-center gap-2">
@@ -1621,17 +1623,19 @@
         }
       });
 
+      containerSummary.innerHTML = summaryHtml;
+
       const totalPagoBadge = document.getElementById('extratoPaidTotalBadge');
       if (totalPagoBadge) totalPagoBadge.innerText = formatMoney(totalPagoGlobal);
 
       const tbody = document.getElementById('extratoTableBody');
-      tbody.innerHTML = '';
+      let tableHtml = '';
       document.getElementById('extratoItemCount').innerText = `${activeInstallments.length} item(ns)`;
       
       const grouped = {};
       activeInstallments.forEach(p => {
-        const parentExp = appState.expenses.find(e => e.id === p.despesa_id);
-        const cardObj = parentExp.forma_pagamento === 'CARD' ? appState.cards.find(c => c.id === parentExp.cartão) : null;
+        const parentExp = expensesById.get(p.despesa_id);
+        const cardObj = parentExp.forma_pagamento === 'CARD' ? cardsById.get(parentExp.cartão) : null;
         const groupName = parentExp.forma_pagamento === 'CARD' ? (cardObj ? cardObj.nome : 'Cartão Excluído') : 'Fora do Cartão (Pix/Dinheiro)';
         if(!grouped[groupName]) grouped[groupName] = [];
         grouped[groupName].push({p, parentExp});
@@ -1642,7 +1646,7 @@
       Object.keys(grouped).sort().forEach(groupName => {
         const groupTotal = grouped[groupName].reduce((s, item) => s + (parseFloat(item.p.valor_parcela) || 0), 0);
 
-        tbody.innerHTML += `
+        tableHtml += `
           <tr class="bg-slate-900/90 border-b border-slate-800">
             <td colspan="6" class="p-2.5 pl-4 text-[11px] uppercase tracking-wider font-bold text-emerald-400">
               <i data-lucide="${groupName.includes('Fora') ? 'banknote' : 'credit-card'}" class="w-3.5 h-3.5 inline mr-1"></i> ${groupName}
@@ -1655,8 +1659,8 @@
         `;
 
         grouped[groupName].forEach(({p, parentExp}) => {
-          const catObj = appState.categories.find(c => c.id === parentExp.categoria);
-          const respObj = appState.responsibles.find(r => r.id === parentExp.responsável);
+          const catObj = categoriesById.get(parentExp.categoria);
+          const respObj = responsiblesById.get(parentExp.responsável);
           
           window.currentExtratoExportData.push({
             estabelecimento: parentExp.estabelecimento,
@@ -1668,7 +1672,7 @@
             data: parentExp.data_compra
           });
 
-          tbody.innerHTML += `
+          tableHtml += `
             <tr class="hover:bg-slate-900/50 transition-colors">
               <td class="p-3 text-center">
                 <input type="checkbox" value="${parentExp.id}" class="extrato-cb rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer">
@@ -1689,9 +1693,10 @@
       });
 
       if (activeInstallments.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500 text-xs">Nenhuma despesa encontrada com os filtros atuais.</td></tr>`;
+        tableHtml = `<tr><td colspan="8" class="p-6 text-center text-slate-500 text-xs">Nenhuma despesa encontrada com os filtros atuais.</td></tr>`;
       }
 
+      tbody.innerHTML = tableHtml;
       lucide.createIcons();
     }
 
